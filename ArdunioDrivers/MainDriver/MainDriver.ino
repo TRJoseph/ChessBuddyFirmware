@@ -1,6 +1,7 @@
 #include <Servo.h>
 #include <Arduino.h>
 
+
 Servo baseServo;
 Servo mainArmServo;
 Servo leverArmServo;
@@ -54,10 +55,9 @@ int pos = 0;  // variable to store the servo position
 //     }
 // }
 
-void testMainArm() {
-    int targetPos = 86;
+void testMainArm(int targetPos) {
 
-    targetPos = int(180 - targetPos);
+    targetPos = (180 - targetPos);
     int currentPos = mainArmServo.read();  // Read current position of servo
 
     if (currentPos < targetPos) {
@@ -73,9 +73,8 @@ void testMainArm() {
     }
 }
 
-void testLeverArm() {
-    int targetPos = 100;
-
+void testLeverArm(int targetPos) {
+  
     int currentPos = leverArmServo.read();  // Read current position of servo
 
     if (currentPos < targetPos) {
@@ -101,8 +100,48 @@ int leverLength = 56;
 // length from the lever arm's endpoint through the linkage to Joint 2
 int linkLength = 135;
 
-void positionDriver(int x, int y, int z) {
+//void positionDriver(int x, int y, int z) {
+//    double phi = atan2(z/y);
+//
+//    double h = sqrt(sq(z) + sq(y));
+//    
+//    double theta = acos((sq(mainVertArmLength)+sq(h)-sq(mainHoriArmLength))/(2*h*mainVertArmLength));
+//
+//    double mainArmAngle = theta + phi;
+//
+//    double desiredLeverArmAngle = theta - phi;
+//
+//    double leverArmAngle = 60 + asin((sin(desiredLeverArmAngle)*linkLength)/leverLength);
+//
+//    
+//    testMainArm(mainArmAngle);
+//
+//    testLeverArm((int)leverArmAngle);
+//}
 
+void positionDriver(float x, float y, float z) {
+  float phi = atan2(z, y);
+
+  float h = sqrt(z * z + y * y);  // calculates the hypotenuse in the YZ-plane
+
+  float cosTheta = (mainVertArmLength * mainVertArmLength + h * h - mainHoriArmLength * mainHoriArmLength) / (2 * h * mainVertArmLength);
+  cosTheta = fmax(-1.0, fmin(1.0, cosTheta)); 
+  float theta = acos(cosTheta);
+
+  float mainArmAngle = (theta + phi) * (180.0 / M_PI);  // rads to degrees
+
+  // this ajusts leverArmAngle to fit the servo range properly
+  float desiredLeverArmAngle = theta - phi;
+  float leverArmAngleRadians = asin((sin(desiredLeverArmAngle) * linkLength) / leverLength);
+  float leverArmAngleDegrees = leverArmAngleRadians * (180.0 / M_PI);  // convert rads to degrees
+
+  // Servo angle adjustment to fit within the 55 to 125 degrees range
+  // Assuming 90 is the middle point of 55 to 125 range
+  leverArmAngleDegrees = 90 + (leverArmAngleDegrees - 90) * ((125 - 55) / 180.0);
+  leverArmAngleDegrees = fmax(55, fmin(125, leverArmAngleDegrees));  // Keeps the lever arm within my approximately bounds (limits of physical movement for the arm)
+
+  testMainArm(int(mainArmAngle));
+  testLeverArm(int(leverArmAngleDegrees));
 }
 
 
@@ -113,11 +152,12 @@ void setup() {
   baseServo.attach(8);  // attaches the servo on pin 9 to the servo object
   mainArmServo.attach(9);  // attaches the servo on pin 9 to the servo object
   leverArmServo.attach(10);  // attaches the servo on pin 9 to the servo object
-  //digitalWrite(7, HIGH);
+  digitalWrite(7, HIGH);
   //testRun();
   //testBase();
-  testMainArm();
-  testLeverArm();
+  //testMainArm(86);
+  //testLeverArm(90);
+  //positionDriver(0, 200, 100);
 }
 
 
