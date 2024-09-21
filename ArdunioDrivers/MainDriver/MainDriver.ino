@@ -119,27 +119,52 @@ int linkLength = 135;
 //    testLeverArm((int)leverArmAngle);
 //}
 
+//void positionDriver(float x, float y, float z) {
+//  float phi = atan2(z, y);
+//
+//  float h = sqrt(z * z + y * y);  // calculates the hypotenuse in the YZ-plane
+//
+//  float cosTheta = (mainVertArmLength * mainVertArmLength + h * h - mainHoriArmLength * mainHoriArmLength) / (2 * h * mainVertArmLength);
+//  cosTheta = fmax(-1.0, fmin(1.0, cosTheta)); 
+//  float theta = acos(cosTheta);
+//
+//  float mainArmAngle = (theta + phi) * (180.0 / M_PI);  // rads to degrees
+//
+//  // this ajusts leverArmAngle to fit the servo range properly
+//  float desiredLeverArmAngle = theta - phi;
+//  float leverArmAngleRadians = asin((sin(desiredLeverArmAngle) * linkLength) / leverLength);
+//  float leverArmAngleDegrees = desiredLeverArmAngle * (180.0 / M_PI);  // convert rads to degrees
+//
+//  // Servo angle adjustment to fit within the 55 to 125 degrees range
+//  // Assuming 90 is the middle point of 55 to 125 range
+//  leverArmAngleDegrees = 90 + (leverArmAngleDegrees - 90) * ((125 - 55) / 180.0);
+//  leverArmAngleDegrees = fmax(55, fmin(125, leverArmAngleDegrees));  // Keeps the lever arm within my approximately bounds (limits of physical movement for the arm)
+//
+//  testMainArm(int(mainArmAngle));
+//  testLeverArm(int(leverArmAngleDegrees));
+//}
+
 void positionDriver(float x, float y, float z) {
   float phi = atan2(z, y);
 
   float h = sqrt(z * z + y * y);  // calculates the hypotenuse in the YZ-plane
 
+  // law of cosines
   float cosTheta = (mainVertArmLength * mainVertArmLength + h * h - mainHoriArmLength * mainHoriArmLength) / (2 * h * mainVertArmLength);
-  cosTheta = fmax(-1.0, fmin(1.0, cosTheta)); 
+  cosTheta = fmax(-1.0, fmin(1.0, cosTheta));  // clamps the value to prevent domain errors
   float theta = acos(cosTheta);
 
-  float mainArmAngle = (theta + phi) * (180.0 / M_PI);  // rads to degrees
+  float mainArmAngle = (theta + phi) * (180.0 / M_PI);  // rads to degrees 
 
-  // this ajusts leverArmAngle to fit the servo range properly
-  float desiredLeverArmAngle = theta - phi;
-  float leverArmAngleRadians = asin((sin(desiredLeverArmAngle) * linkLength) / leverLength);
-  float leverArmAngleDegrees = leverArmAngleRadians * (180.0 / M_PI);  // convert rads to degrees
+  // calculate the actual lever arm angle required to maintain level height
+  float leverArmHeight = z - (mainVertArmLength * sin(theta));
+  float leverArmAngleRadians = asin(leverArmHeight / leverLength);
+  float leverArmAngleDegrees = leverArmAngleRadians * (180.0 / M_PI);  // rads to degrees
 
-  // Servo angle adjustment to fit within the 55 to 125 degrees range
-  // Assuming 90 is the middle point of 55 to 125 range
+  // servo angle adjustment to fit within the 55 to 125 degrees range
   leverArmAngleDegrees = 90 + (leverArmAngleDegrees - 90) * ((125 - 55) / 180.0);
-  leverArmAngleDegrees = fmax(55, fmin(125, leverArmAngleDegrees));  // Keeps the lever arm within my approximately bounds (limits of physical movement for the arm)
-
+  leverArmAngleDegrees = fmax(55, fmin(125, leverArmAngleDegrees));
+  
   testMainArm(int(mainArmAngle));
   testLeverArm(int(leverArmAngleDegrees));
 }
@@ -157,7 +182,7 @@ void setup() {
   //testBase();
   //testMainArm(86);
   //testLeverArm(90);
-  //positionDriver(0, 200, 100);
+  positionDriver(0, 180, 110);
 }
 
 
