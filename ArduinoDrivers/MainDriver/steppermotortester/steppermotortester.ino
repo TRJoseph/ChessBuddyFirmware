@@ -1,4 +1,5 @@
 #include <AccelStepper.h>
+#include <string.h>
 #define M_PI 3.14159265358979323846
 
 // in mm
@@ -19,18 +20,80 @@ const int zDirPin = 7;
 
 const long stepsPerRevolution = 800;  // Adjust for quarter-stepping
 
-
 // Electromagnet Control
 const int electromagnetPin = 12;
 
 // Chess board x,y positions relative to the robotic arm
 // bottom left square is index 0, top right square is index 63
 int SquarePositions[64][2] = {
-  {-105, 124}, 
-  {-52, 123},
+  {-134,105.5}, 
+  {-96,105.5},
+  {-59,105.5},
+  {-21.5,105.5},
+  {17,106},
+  {58,106},
+  {96, 106},
+  {134, 107},
+  // 2nd rank
+  {-134,143.5}, 
+  {-96,143.5},
+  {-59,143.5},
+  {-21.5,145.5},
+  {17,146},
+  {58,146},
+  {96,146},
+  {134,146},
+  // 3rd rank
+  {-134,183.5}, 
+  {-96,183.5},
+  {-59,183.5},
+  {-21.5,183.5},
+  {17,184},
+  {58,184},
+  {96,184},
+  {134,184},
+  // 4th rank
+  {-134,221.5}, 
+  {-96,221.5},
+  {-59,221.5},
+  {-21.5,221.5},
+  {17,222},
+  {58,222},
+  {96,222},
+  {134,222},
   // {x, y} coordinates for other squares
 };
 
+enum class SpecialMove {
+    None,
+    Castling, 
+    Capture,
+    EnPassant, 
+    Promotion
+};
+
+enum class PieceType {
+    Pawn,
+    Bishop,
+    Knight,
+    Rook,
+    Queen,
+    King
+};
+
+struct KeyValuePair {
+    PieceType key;
+    int value;
+};
+
+// array of key value pairs for each piece offset
+// this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
+KeyValuePair PieceZAxisOffsets[] = {
+    {PieceType::Pawn, -4280},
+    {PieceType::Knight, -2200},
+    {PieceType::Bishop, -2890},
+    {PieceType::King, -780}
+};
 
 /* */
 // Limit switch pinout constants
@@ -47,7 +110,7 @@ const float baseStepperAccel = 50.0;
 
 
 /* THINGS TO NOTE:
-The X-Axis is referring to the base joint rotation. The Y-Axis is referring to the arm segment joint rotation.
+The X stepper motor is referring to the base joint rotation. The Y stepper motor is referring to the arm segment joint rotation.
 */
 class StepperMotor {
 public:
@@ -100,17 +163,182 @@ public:
 };
 
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, baseStepperAccel, baseStepperSpeed / 10, baseStepperAccel / 2);
-StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 20, baseStepperAccel * 4, 1250.0 , baseStepperAccel);
-StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed, baseStepperAccel, baseStepperSpeed / 4, baseStepperAccel / 2.5); 
+StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 10, baseStepperAccel / 2);
+StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 3, 1000, 1250.0 , baseStepperAccel);
+StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 2, 10000, baseStepperSpeed, baseStepperAccel); 
 
 AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
 AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
 AccelStepper zStepper(AccelStepper::DRIVER, zStepPin, zDirPin);
 
-void setup() {
-  Serial.begin(9600);
+void runCalibrationRoutine() {
 
+  // ensure arm clearance for y axis calibration routine
+  zStepperMotor.setNormalMotorSettings();
+  zStepperMotor.moveTo(3500);
+
+  xStepperMotor.calibrate(xLimitPin);
+  xStepperMotor.moveTo(560);
+
+  yStepperMotor.calibrate(yLimitPin);
+  yStepperMotor.moveTo(11485);
+
+  zStepperMotor.calibrate(zLimitPin);
+  zStepperMotor.moveTo(9500);
+  xStepperMotor.moveTo(1570);
+  
+}
+
+int* getSquarePosition(const String& square) {
+    // maps the square identifiers to their corresponding array indices
+    int index = 0;
+    char file = square.charAt(0); // 'a' to 'h'
+    char rank = square.charAt(1); // '1' to '8'
+
+    index = (rank - '1') * 8 + (file - 'a');
+
+    if (index >= 0 && index < 64) {
+        return SquarePositions[index];
+    } else {
+        return nullptr; // returns nullptr if the square is invalid
+    }
+}
+
+// a quiet move in chess is defined as a move that does not change the current material on the board (not a capture move)
+// if no special move was performed assume its quiet
+void performQuietMove(String moveString, PieceType pieceType = PieceType::Pawn, SpecialMove specialMove = SpecialMove::None) {
+
+  size_t length = moveString.length();
+  size_t midpoint = length / 2;
+
+  int pieceZOffset = getPieceZOffset(pieceType);
+  
+  // split the move string into two individual squares
+  String fromSquare = moveString.substring(0, midpoint);
+  String toSquare = moveString.substring(midpoint);  
+
+  moveToSquare(fromSquare);
+
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(pieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+
+  // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
+  zStepperMotor.moveTo(6000);
+
+  moveToSquare(toSquare);
+
+  zStepperMotor.moveTo(pieceZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(0);
+
+  // go to park position
+  inverseKinematics(-100, 0);
+}
+
+void moveToSquare(const String& square) {
+  int* position = getSquarePosition(square);
+  if (position != nullptr) {
+      inverseKinematics(position[0], position[1]);
+      delay(50);
+  }
+}
+
+int getPieceZOffset(PieceType key) {
+    for (int i = 0; i < sizeof(PieceZAxisOffsets) / sizeof(PieceZAxisOffsets[0]); i++) {
+        if (PieceZAxisOffsets[i].key == key) {
+            return PieceZAxisOffsets[i].value;
+        }
+    }
+    return -1;  // return -1 if the key is not found 
+}
+
+PieceType stringToPieceType(const String& pieceStr) {
+  if (pieceStr.equalsIgnoreCase("pawn")) {
+    return PieceType::Pawn;
+  } else if (pieceStr.equalsIgnoreCase("bishop")) {
+    return PieceType::Bishop;
+  } else if (pieceStr.equalsIgnoreCase("knight")) {
+    return PieceType::Knight;
+  } else if (pieceStr.equalsIgnoreCase("rook") || pieceStr.equalsIgnoreCase("castle")) {
+    return PieceType::Rook;
+  } else if (pieceStr.equalsIgnoreCase("queen")) {
+    return PieceType::Queen;
+  } else if (pieceStr.equalsIgnoreCase("king")) {
+    return PieceType::King;
+  } else {
+    Serial.println("Error: Invalid piece type.");
+    return PieceType::King;
+  }
+}
+
+void inverseKinematics(long x, long y) {
+  // y motor corresponds to q2
+  // x motor (base motor) corresponds to q1
+
+  long x_squared = x * x;
+  long y_squared = y * y;
+  long a1_squared = ArmSegment1Length * ArmSegment1Length;
+  long a2_squared = ArmSegment2Length * ArmSegment2Length;
+  long denominator = 2 * ArmSegment1Length * ArmSegment2Length;
+
+  // Calculate the cosine value
+  double cosineValue = (x_squared + y_squared - a1_squared - a2_squared) / (double)denominator;
+
+  double q2 = acos(cosineValue);
+  double q1 = atan2(y, x) - atan2(ArmSegment2Length * sin(q2), ArmSegment1Length + ArmSegment2Length * cos(q2));
+
+  // convert to degrees
+  q1 = 90 - q1 * (180 / M_PI);
+  q2 = q2 * (180 / M_PI);
+
+  long targetYSteps = int((q2 * stepsPerRevolution * ArmGearReductionRatio) / 360);
+  long targetXSteps = int((q1 * stepsPerRevolution * BaseGearReductionRatio) / 360);
+
+
+  Serial.print("targetXSteps: ");
+  Serial.println(targetXSteps);
+
+  Serial.print("targetYSteps: ");
+  Serial.println(targetYSteps);
+
+  long yStepperPos = yStepperMotor.motor.currentPosition();
+  long xStepperPos = xStepperMotor.motor.currentPosition();
+
+  long ySteps = -(targetYSteps - abs(yStepperPos)); 
+
+  long xSteps;
+
+  xSteps = targetXSteps - xStepperPos;
+  if ((xStepperPos < 0 && targetXSteps > 0) || (xStepperPos > 0 && targetXSteps < 0)) {
+      // uses offset if we're crossing between quadrant 1 and quadrant 2
+      xSteps = targetXSteps + (-xStepperPos);
+  }
+
+  Serial.print("x stepper current position: ");
+  Serial.println(xStepperPos);
+
+  Serial.print("y stepper current position: ");
+  Serial.println(yStepperPos);
+
+  Serial.print("actual X Steps: ");
+  Serial.println(xSteps);
+  Serial.print("actual Y Steps: ");
+  Serial.println(ySteps);
+
+
+  xStepperMotor.moveToNoRun(xSteps);
+  yStepperMotor.moveToNoRun(ySteps);
+  
+  while (xStepperMotor.motor.distanceToGo() != 0 || 
+         yStepperMotor.motor.distanceToGo() != 0) {
+    
+    xStepperMotor.motor.run();
+    yStepperMotor.motor.run();
+  }
+}
+
+void setup() {
   // set electromagnet pin out
   pinMode(electromagnetPin, OUTPUT);
   digitalWrite(electromagnetPin, LOW);
@@ -138,140 +366,57 @@ void setup() {
   yStepperMotor.motor.setCurrentPosition(0);
   zStepperMotor.motor.setCurrentPosition(0);
 
-  //movePiece();
-
-  //inverseKinematics(SquarePositions[0][0], SquarePositions[0][1]);
-  //delay(2000);
-  // inverseKinematics(SquarePositions[1][0], SquarePositions[1][1]);
-  // delay(2000);
-  // inverseKinematics(SquarePositions[0][0], SquarePositions[0][1]);
-  // delay(2000);
-  // inverseKinematics(SquarePositions[1][0], SquarePositions[1][1]);
-  inverseKinematics(4,115);
+  // start serial communication
+  Serial.begin(9600);
 }
 
-void runCalibrationRoutine() {
+int splitString(String input, char delimiter, String outputArray[]) {
+  int tokenIndex = 0;
+  int startIndex = 0;
+  int delimiterIndex = input.indexOf(delimiter);
 
-   // ensure arm clearance for y axis calibration routine
-  //zStepperMotor.setNormalMotorSettings();
-  //zStepperMotor.moveTo(3000);
+  while (delimiterIndex != -1) {
+    outputArray[tokenIndex++] = input.substring(startIndex, delimiterIndex);
+    startIndex = delimiterIndex + 1;
+    delimiterIndex = input.indexOf(delimiter, startIndex);
 
-  xStepperMotor.calibrate(xLimitPin);
-  xStepperMotor.moveTo(560);
+    // avoids exceeding the array size
+    if (tokenIndex >= 5) break;
+  }
+  outputArray[tokenIndex++] = input.substring(startIndex);
 
-  yStepperMotor.calibrate(yLimitPin);
-  yStepperMotor.moveTo(11400);
-
-  //zStepperMotor.calibrate(zLimitPin);
-  //zStepperMotor.moveTo(8500);
-  xStepperMotor.moveTo(1550);
-  
+  return tokenIndex; 
 }
 
-void movePiece() {
+void processCommand(String input) {
+  const char delimiter = ' ';
+  String tokens[5];
 
-  xStepperMotor.moveToNoRun(xStepperMotor.motor.currentPosition() - 400);
-  yStepperMotor.moveToNoRun(yStepperMotor.motor.currentPosition() + 7000);
-  while (xStepperMotor.motor.distanceToGo() != 0 || 
-         yStepperMotor.motor.distanceToGo() != 0) {
-    
-    xStepperMotor.motor.run();
-    yStepperMotor.motor.run();
+  int tokenCount = splitString(input, delimiter, tokens);
+
+  // commandString in the future will be things such as "doquietmove" or "docastlingmove" or "docapturemove"
+  String commandString = tokens[0];
+
+  // moveString should contain a string like "e2e4"
+  String moveString = tokens[1];
+
+  if(commandString == "domove") {
+  if (moveString.length() > 0) {
+        performQuietMove(moveString, stringToPieceType(tokens[2]));
+        Serial.println("Executed move: " + moveString);
+      } else {
+        Serial.println("Error: MOVE command requires an argument.");
+      }
   }
-
-  zStepperMotor.moveTo(zStepperMotor.motor.currentPosition() - 1000);
-  digitalWrite(electromagnetPin, HIGH);
-  zStepperMotor.moveTo(zStepperMotor.motor.currentPosition() + 1000);
-  
-  xStepperMotor.moveToNoRun(xStepperMotor.motor.currentPosition() + 400);
-  yStepperMotor.moveToNoRun(yStepperMotor.motor.currentPosition() - 2000);
-  while (xStepperMotor.motor.distanceToGo() != 0 || 
-         yStepperMotor.motor.distanceToGo() != 0) {
-    
-    xStepperMotor.motor.run();
-    yStepperMotor.motor.run();
-  }
-  zStepperMotor.moveTo(zStepperMotor.motor.currentPosition() - 1000);
-  digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(zStepperMotor.motor.currentPosition() + 1000);
-  
-}
-
-void inverseKinematics(long x, long y) {
-  // y motor corresponds to q2
-  // x motor (base motor) corresponds to q1
-
-  long x_squared = x * x;
-  long y_squared = y * y;
-  long a1_squared = ArmSegment1Length * ArmSegment1Length;
-  long a2_squared = ArmSegment2Length * ArmSegment2Length;
-  long denominator = 2 * ArmSegment1Length * ArmSegment2Length;
-
-  // Calculate the cosine value
-  double cosineValue = (x_squared + y_squared - a1_squared - a2_squared) / (double)denominator;
-
-  double q2 = acos(cosineValue);
-  double q1 = atan2(y, x) - atan2(ArmSegment2Length * sin(q2), ArmSegment1Length + ArmSegment2Length * cos(q2));
-
-  // convert to degrees
-  q1 = q1 * (180 / M_PI);
-  q2 = q2 * (180 / M_PI);
-
-  long targetYSteps = floor((q2 * stepsPerRevolution * ArmGearReductionRatio) / 360);
-  long targetXSteps = floor((q1 * stepsPerRevolution * BaseGearReductionRatio) / 360);
-
-
-  Serial.print("targetXSteps: ");
-  Serial.println(targetXSteps);
-
-  Serial.print("targetYSteps: ");
-  Serial.println(targetYSteps);
-
-  long yStepperPos = yStepperMotor.motor.currentPosition();
-  long xStepperPos = xStepperMotor.motor.currentPosition();
-
-  long xSteps = targetXSteps - xStepperPos;
-  long ySteps = targetYSteps - abs(yStepperPos); 
-
-  if(targetXSteps < abs(xStepperPos)) {
-    xSteps = targetXSteps + xStepperPos;
-  } else {
-    xSteps = targetXSteps + xStepperPos;
-  }
-
-
-  Serial.print("x stepper current position: ");
-  Serial.println(xStepperPos);
-
-  Serial.print("y stepper current position: ");
-  Serial.println(yStepperPos);
-
-  // If moving left (negative x), make steps negative
-  // if (x < 0) {
-  //     xSteps = -xSteps;
-  // }
-  xSteps = -xSteps;
-
-  Serial.print("actual X Steps: ");
-  Serial.println(xSteps);
-  Serial.print("actual Y Steps: ");
-  Serial.println(ySteps);
-
-
-  xStepperMotor.moveToNoRun(xSteps);
-  yStepperMotor.moveToNoRun(ySteps);
-  
-  while (xStepperMotor.motor.distanceToGo() != 0 || 
-         yStepperMotor.motor.distanceToGo() != 0) {
-    
-    xStepperMotor.motor.run();
-    yStepperMotor.motor.run();
-  }
-
-
 }
 
 void loop() {
-//   if (!xStepper.run()) {   // run() returns true as long as the final position has not been reached and speed is not 0.
-//  }
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+
+    if (input.length() > 0) {
+      processCommand(input);
+    }
+  }
 }
