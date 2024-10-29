@@ -26,6 +26,7 @@ const int electromagnetPin = 12;
 // Chess board x,y positions relative to the robotic arm
 // bottom left square is index 0, top right square is index 63
 int SquarePositions[64][2] = {
+  // 1st rank
   {-134,105.5}, 
   {-96,105.5},
   {-59,105.5},
@@ -61,7 +62,42 @@ int SquarePositions[64][2] = {
   {58,222},
   {96,222},
   {134,222},
-  // {x, y} coordinates for other squares
+  // 5th rank
+  {-134,259.5}, 
+  {-96,259.5},
+  {-59,259.5},
+  {-21.5,259.5},
+  {17,260},
+  {58,260},
+  {96,260},
+  {134,260},
+  // 6th rank
+  {-134,297.5}, 
+  {-96,297.5},
+  {-59,297.5},
+  {-21.5,297.5},
+  {17,298},
+  {58,298},
+  {96,298},
+  {134,298},
+  // 7th rank
+  {-134,335.5}, 
+  {-96,335.5},
+  {-59,335.5},
+  {-21.5,335.5},
+  {17,336},
+  {58,336},
+  {96,336},
+  {134,336},
+  // 8th rank
+  {-134,373.5}, 
+  {-96,373.5},
+  {-59,373.5},
+  {-21.5,373.5},
+  {17,374},
+  {58,374},
+  {96,374},
+  {134,374},
 };
 
 enum class SpecialMove {
@@ -90,8 +126,10 @@ struct KeyValuePair {
 // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
 KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::Pawn, -4280},
-    {PieceType::Knight, -2200},
+    {PieceType::Knight, -2500},
     {PieceType::Bishop, -2890},
+    {PieceType::Rook, -3100},
+    {PieceType::Queen, -2100},
     {PieceType::King, -780}
 };
 
@@ -165,7 +203,7 @@ public:
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
 StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 10, baseStepperAccel / 2);
 StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 3, 1000, 1250.0 , baseStepperAccel);
-StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 2, 10000, baseStepperSpeed, baseStepperAccel); 
+StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 3, 10000, baseStepperSpeed, baseStepperAccel); 
 
 AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
 AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
@@ -206,7 +244,7 @@ int* getSquarePosition(const String& square) {
 
 // a quiet move in chess is defined as a move that does not change the current material on the board (not a capture move)
 // if no special move was performed assume its quiet
-void performQuietMove(String moveString, PieceType pieceType = PieceType::Pawn, SpecialMove specialMove = SpecialMove::None) {
+void performQuietMove(String moveString, PieceType pieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
 
   size_t length = moveString.length();
   size_t midpoint = length / 2;
@@ -224,7 +262,50 @@ void performQuietMove(String moveString, PieceType pieceType = PieceType::Pawn, 
   digitalWrite(electromagnetPin, HIGH);
 
   // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-  zStepperMotor.moveTo(6000);
+  zStepperMotor.moveTo(7000 + pieceZOffset);
+
+  moveToSquare(toSquare);
+
+  zStepperMotor.moveTo(pieceZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(0);
+
+  // go to park position
+  inverseKinematics(-100, 0);
+}
+
+// special move here could be for en passant or a capture promotion move
+void performCaptureMove(String moveString, PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
+  size_t length = moveString.length();
+  size_t midpoint = length / 2;
+
+  int pieceZOffset = getPieceZOffset(pieceType);
+  int capturedPieceZOffset = getPieceZOffset(capturedPieceType);
+  
+  // split the move string into two individual squares
+  String fromSquare = moveString.substring(0, midpoint);
+  String toSquare = moveString.substring(midpoint);  
+
+  // extra steps for capture, we need to visit the "to square" first
+  moveToSquare(toSquare);
+
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(capturedPieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+  zStepperMotor.moveTo(8000 + capturedPieceZOffset);
+  inverseKinematics(250, 0); // TODO: move to consistent location off the board
+  
+  zStepperMotor.moveTo(capturedPieceZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(0);
+
+  moveToSquare(fromSquare);
+
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(pieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+
+  zStepperMotor.moveTo(7000 + pieceZOffset);
 
   moveToSquare(toSquare);
 
@@ -400,9 +481,18 @@ void processCommand(String input) {
   // moveString should contain a string like "e2e4"
   String moveString = tokens[1];
 
-  if(commandString == "domove") {
-  if (moveString.length() > 0) {
+  if(commandString == "doquietmove") {
+    if (moveString.length() > 0) {
         performQuietMove(moveString, stringToPieceType(tokens[2]));
+        Serial.println("Executed move: " + moveString);
+      } else {
+        Serial.println("Error: MOVE command requires an argument.");
+      }
+  }
+  if(commandString == "docapturemove") {
+    if (moveString.length() > 0) {
+        // the tokens should go as follows, example: e3d4 pawn queen. This means a pawn captured a queen on d4 from d3
+        performCaptureMove(moveString, stringToPieceType(tokens[2]), stringToPieceType(tokens[3]));
         Serial.println("Executed move: " + moveString);
       } else {
         Serial.println("Error: MOVE command requires an argument.");
