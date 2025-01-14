@@ -46,13 +46,10 @@ def clear_initial_output(tigerengine, num_lines=5):
     for _ in range(num_lines):
         tigerengine.stdout.readline().strip()
 
-def extract_moved_piece(splitResponse):
+def extract_moved_piece(pieceMovedSubstring):
     try:
-        # Split the response by "|", then get the part that starts with "movedPiece:"
-        moved_piece_part = splitResponse[1]  # This gives you "movedPiece:0"
-        
         # Now, split by ":" and get the second part which is the piece type (e.g., "0")
-        moved_piece = moved_piece_part.split(":")[1]  # This gives "0"
+        moved_piece = pieceMovedSubstring.split(":")[1]  # This gives "0"
         
         return int(moved_piece)  # Convert to integer (0 for Pawn, etc.)
     except IndexError:
@@ -115,7 +112,7 @@ def main():
                     cleanedUpTigerMoveResponse = tigerMove.split("bestmove ")[1] # removes the 'bestmove' part of the response
                     splitResponse = cleanedUpTigerMoveResponse.split("|") # splits the response by the "|" delimiter
                     moveString = splitResponse[0]
-                    movedPiece = extract_moved_piece(splitResponse)
+                    movedPiece = extract_moved_piece(splitResponse[1])
                     movedPiece = piece_types.get(movedPiece, "Unknown Piece")
 
                     # add move response from engine to move history
@@ -124,7 +121,8 @@ def main():
 
                     # TODO: use switch statement here eventually
                     if "capturedPiece" in cleanedUpTigerMoveResponse:
-                        capturedPiece = splitResponse[2]
+                        capturedPiece = extract_moved_piece(splitResponse[2])
+                        capturedPiece = piece_types.get(capturedPiece, "Unknown Piece")
                         arduinoCommandString = "docapturemove " + moveString + " " + movedPiece + " " + " " + capturedPiece
                         arduino_response = communicate_with_arduino(arduinoCommandString)
                         print(f"Response from Arduino: {arduino_response}")

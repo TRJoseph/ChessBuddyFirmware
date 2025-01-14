@@ -27,77 +27,77 @@ const int electromagnetPin = 12;
 // bottom left square is index 0, top right square is index 63
 int SquarePositions[64][2] = {
   // 1st rank
-  {-134,105}, 
-  {-96,105},
-  {-59,105},
-  {-21,105},
-  {17,106},
-  {58,106},
-  {96,106},
-  {134,107},
+  {-135,100}, 
+  {-97,100},
+  {-60,100},
+  {-22,100},
+  {18,100},
+  {59,100},
+  {97,100},
+  {135,100},
   // 2nd rank
-  {-134,143}, 
-  {-96,143},
-  {-59,143},
-  {-21,145},
-  {17,146},
-  {58,146},
-  {96,146},
-  {134,146},
+  {-135,138}, 
+  {-97,138},
+  {-60,138},
+  {-22,138},
+  {18,138},
+  {59,138},
+  {97,138},
+  {135,138},
   // 3rd rank
-  {-134,183}, 
-  {-96,183},
-  {-59,183},
-  {-21,183},
-  {17,184},
-  {58,184},
-  {96,184},
-  {134,184},
+  {-135,180}, 
+  {-97,180},
+  {-60,180},
+  {-22,180},
+  {18,180},
+  {59,180},
+  {97,180},
+  {135,180},
   // 4th rank
-  {-134,221}, 
-  {-96,221},
-  {-59,221},
-  {-21,221},
-  {17,222},
-  {58,222},
-  {96,222},
-  {134,222},
+  {-135,218}, 
+  {-97,218},
+  {-60,218},
+  {-22,218},
+  {18,218},
+  {59,218},
+  {97,218},
+  {135,218},
   // 5th rank
-  {-134,259}, 
-  {-96,259},
-  {-59,259},
-  {-21,259},
-  {17,260},
-  {58,260},
-  {96,260},
-  {134,260},
+  {-135,256}, 
+  {-97,256},
+  {-60,256},
+  {-22,256},
+  {18,256},
+  {59,256},
+  {97,256},
+  {135,256},
   // 6th rank
-  {-134,297}, 
-  {-96,297},
-  {-59,297},
-  {-21,297},
-  {17,298},
-  {58,298},
-  {96,298},
-  {134,298},
+  {-135,295}, 
+  {-97,295},
+  {-60,295},
+  {-22,295},
+  {18,295},
+  {59,295},
+  {97,295},
+  {135,295},
   // 7th rank
-  {-134,335}, 
-  {-96,335},
-  {-59,335},
-  {-21,335},
-  {17,336},
-  {58,336},
-  {96,336},
-  {134,336},
+  {-135,334}, 
+  {-97,334},
+  {-60,334},
+  {-22,334},
+  {18,334},
+  {59,334},
+  {97,334},
+  {135,334},
   // 8th rank
-  {-134,373}, 
-  {-96,373},
-  {-59,373},
-  {-21,373},
-  {17,374},
-  {58,374},
-  {96,374},
-  {134,374},
+  {-135,373}, 
+  {-97,373},
+  {-60,373},
+  {-22,373},
+  {18,373},
+  {59,373},
+  {97,373},
+  {135,373},
 };
 
 enum class SpecialMove {
@@ -128,16 +128,16 @@ KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::Pawn, -4300},
     {PieceType::Knight, -2500},
     {PieceType::Bishop, -2890},
-    {PieceType::Rook, -3100},
-    {PieceType::Queen, -2100},
-    {PieceType::King, -780}
+    {PieceType::Rook, -3000},
+    {PieceType::Queen, -1900},
+    {PieceType::King, -650} // king is good
 };
 
 /* */
 // Limit switch pinout constants
-const int xLimitPin = 10;
-const int yLimitPin = 11;
-const int zLimitPin = 9;
+const int xLimitPin = 9;
+const int yLimitPin = 10;
+const int zLimitPin = 11;
 /* */
 
 const double BaseGearReductionRatio = 5.5;
@@ -213,7 +213,7 @@ void runCalibrationRoutine() {
 
   // ensure arm clearance for y axis calibration routine
   zStepperMotor.setNormalMotorSettings();
-  zStepperMotor.moveTo(3500);
+  //zStepperMotor.moveTo(3500);
 
   xStepperMotor.calibrate(xLimitPin);
   xStepperMotor.moveTo(1810);
@@ -224,7 +224,11 @@ void runCalibrationRoutine() {
   zStepperMotor.calibrate(zLimitPin);
   zStepperMotor.moveTo(9500);
   xStepperMotor.moveTo(2885);
-  
+}
+
+void gotoParkPosition() {
+  // go to park position
+  inverseKinematics(-100, 0);
 }
 
 int* getSquarePosition(const String& square) {
@@ -277,8 +281,7 @@ void performQuietMove(String moveString, PieceType pieceType = PieceType::King, 
   digitalWrite(electromagnetPin, LOW);
   zStepperMotor.moveTo(0);
 
-  // go to park position
-  inverseKinematics(-100, 0);
+  gotoParkPosition();
 }
 
 // special move here could be for en passant or a capture promotion move
@@ -320,8 +323,7 @@ void performCaptureMove(String moveString, PieceType pieceType = PieceType::King
   digitalWrite(electromagnetPin, LOW);
   zStepperMotor.moveTo(0);
 
-  // go to park position
-  inverseKinematics(-100, 0);
+  gotoParkPosition();
 }
 
 void moveToSquare(const String& square) {
@@ -454,6 +456,8 @@ void setup() {
   yStepperMotor.motor.setCurrentPosition(0);
   zStepperMotor.motor.setCurrentPosition(0);
 
+  gotoParkPosition();
+
   // start serial communication
   Serial.begin(9600);
 }
@@ -487,6 +491,25 @@ void processCommand(String input) {
 
   // moveString should contain a string like "e2e4"
   String moveString = tokens[1];
+
+  // usage: moveToSquare <square> <piecetype>
+  if(commandString == "moveToSquare") {
+    if (moveString.length() > 0) {
+        PieceType pieceType = stringToPieceType(tokens[2]);
+        int pieceZOffset = getPieceZOffset(pieceType);
+        moveToSquare(moveString);
+
+         //move down and trigger magnet high
+        zStepperMotor.moveTo(pieceZOffset);
+        digitalWrite(electromagnetPin, HIGH);
+      
+        // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
+        zStepperMotor.moveTo(7000 + pieceZOffset);
+        Serial.println("Moved to square: " + moveString);
+      } else {
+        Serial.println("Error: MOVE command requires an argument.");
+      }
+  }
 
   if(commandString == "doquietmove") {
     if (moveString.length() > 0) {
