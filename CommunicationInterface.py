@@ -2,13 +2,16 @@ import select
 import serial
 import subprocess
 import time
+from serial import Serial
 
 arduino_port = '/dev/ttyACM0'
 baud_rate = 9600
 ser = serial.Serial(arduino_port, baud_rate, timeout=1)
 
+tigerengine_path = "/c/Users/trjos/Projects/TigerEngine/UCIEngine/bin/Debug/net8.0"
 
-tigerengine_path = "/home/thomas/Desktop/ROS/TigerEngineExecutable/TigerEngine"
+#tigerengine_path = "/home/thomas/Desktop/ROS/TigerEngineExecutable/TigerEngine"
+
 whiteToMove = True
 moves = []
 
