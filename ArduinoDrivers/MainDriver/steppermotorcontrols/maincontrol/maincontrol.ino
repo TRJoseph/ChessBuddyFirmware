@@ -2,6 +2,41 @@
 #include <string.h>
 #define M_PI 3.14159265358979323846
 
+/* */
+// PIN DEFINITIONS FOR ELECTRONIC CHESS BOARD COMPONENT
+const int latchPin = 22;
+const int clockEnablePin = 23;
+const int dataIn = 25;
+const int clockPin = 24;
+const int buttonPin = 52;
+
+// Number of shift registers in the daisy chain
+const int numRegisters = 8;
+const int numBits = numRegisters * 8; // total bits to read (for 64 squares)
+
+// Board State Definitions
+enum PieceStatus {
+  empty,
+  occupied,
+  potentially_captured
+};
+
+enum PieceColor {
+  none,
+  white,
+  black
+};
+
+struct Square {
+    PieceStatus status;
+    PieceColor color;
+};
+
+Square squareStates[64];
+
+bool whiteToMove;
+/* */
+
 // in mm
 const long ArmSegment1Length = 260;
 const long ArmSegment2Length = 170;
@@ -27,78 +62,79 @@ const int electromagnetPin = 12;
 // bottom left square is index 0, top right square is index 63
 int SquarePositions[64][2] = {
   // 1st rank
-  {-135,100}, 
-  {-97,100},
-  {-60,100},
-  {-22,100},
-  {18,100},
-  {59,100},
-  {97,100},
-  {135,100},
+  {-137,100}, 
+  {-99,100},
+  {-62,100},
+  {-24,100},
+  {16,100},
+  {57,100},
+  {95,100},
+  {133,100},
   // 2nd rank
-  {-135,138}, 
-  {-97,138},
-  {-60,138},
-  {-22,138},
-  {18,138},
-  {59,138},
-  {97,138},
-  {135,138},
+  {-137,138}, 
+  {-99,138},
+  {-62,138},
+  {-24,138},
+  {16,138},
+  {57,138},
+  {95,138},
+  {133,138},
   // 3rd rank
-  {-135,180}, 
-  {-97,180},
-  {-60,180},
-  {-22,180},
-  {18,180},
-  {59,180},
-  {97,180},
-  {135,180},
+  {-137,180}, 
+  {-99,180},
+  {-62,180},
+  {-24,180},
+  {16,180},
+  {57,180},
+  {95,180},
+  {133,180},
   // 4th rank
-  {-135,218}, 
-  {-97,218},
-  {-60,218},
-  {-22,218},
-  {18,218},
-  {59,218},
-  {97,218},
-  {135,218},
+  {-137,218}, 
+  {-99,218},
+  {-62,218},
+  {-24,218},
+  {16,218},
+  {57,218},
+  {95,218},
+  {133,218},
   // 5th rank
-  {-135,256}, 
-  {-97,256},
-  {-60,256},
-  {-22,256},
-  {18,256},
-  {59,256},
-  {97,256},
-  {135,256},
+  {-137,256}, 
+  {-99,256},
+  {-62,256},
+  {-24,256},
+  {16,256},
+  {57,256},
+  {95,256},
+  {133,256},
   // 6th rank
-  {-135,295}, 
-  {-97,295},
-  {-60,295},
-  {-22,295},
-  {18,295},
-  {59,295},
-  {97,295},
-  {135,295},
+  {-137,295}, 
+  {-99,295},
+  {-62,295},
+  {-24,295},
+  {16,295},
+  {57,295},
+  {95,295},
+  {133,295},
   // 7th rank
-  {-135,334}, 
-  {-97,334},
-  {-60,334},
-  {-22,334},
-  {18,334},
-  {59,334},
-  {97,334},
-  {135,334},
+  {-137,334}, 
+  {-99,334},
+  {-62,334},
+  {-24,334},
+  {16,334},
+  {57,334},
+  {95,334},
+  {133,334},
   // 8th rank
-  {-135,373}, 
-  {-97,373},
-  {-60,373},
-  {-22,373},
-  {18,373},
-  {59,373},
-  {97,373},
-  {135,373},
+  {-137,373}, 
+  {-99,373},
+  {-62,373},
+  {-24,373},
+  {16,373},
+  {57,373},
+  {95,373},
+  {133,373},
 };
+
 
 enum class SpecialMove {
     None,
@@ -125,11 +161,11 @@ struct KeyValuePair {
 // array of key value pairs for each piece offset
 // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
 KeyValuePair PieceZAxisOffsets[] = {
-    {PieceType::Pawn, -4300},
-    {PieceType::Knight, -2500},
-    {PieceType::Bishop, -2890},
-    {PieceType::Rook, -3000},
-    {PieceType::Queen, -1900},
+    {PieceType::Pawn, -3740},
+    {PieceType::Knight, -2980},
+    {PieceType::Bishop, -2500},
+    {PieceType::Rook, -3350},
+    {PieceType::Queen, -1940},
     {PieceType::King, -650} // king is good
 };
 
@@ -203,7 +239,7 @@ public:
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
 StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 10, baseStepperAccel / 2);
 StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 3, 1000, 1250.0 , baseStepperAccel);
-StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 3, 10000, baseStepperSpeed, baseStepperAccel); 
+StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 3, 10000, baseStepperSpeed, 1000); 
 
 AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
 AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
@@ -273,13 +309,13 @@ void performQuietMove(String moveString, PieceType pieceType = PieceType::King, 
   digitalWrite(electromagnetPin, HIGH);
 
   // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-  zStepperMotor.moveTo(7000 + pieceZOffset);
+  zStepperMotor.moveTo(8000 + pieceZOffset);
 
   moveToSquare(toSquare);
 
   zStepperMotor.moveTo(pieceZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(0);
+  zStepperMotor.moveTo(5500);
 
   gotoParkPosition();
 }
@@ -303,7 +339,8 @@ void performCaptureMove(String moveString, PieceType pieceType = PieceType::King
   zStepperMotor.moveTo(capturedPieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
   zStepperMotor.moveTo(8000 + capturedPieceZOffset);
-  inverseKinematics(-160, 100); // TODO: move to consistent location off the board
+  // go to park position to drop off captured piece
+  gotoParkPosition();
   
   zStepperMotor.moveTo(capturedPieceZOffset);
   digitalWrite(electromagnetPin, LOW);
@@ -315,7 +352,7 @@ void performCaptureMove(String moveString, PieceType pieceType = PieceType::King
   zStepperMotor.moveTo(pieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
 
-  zStepperMotor.moveTo(7000 + pieceZOffset);
+  zStepperMotor.moveTo(8000 + pieceZOffset);
 
   moveToSquare(toSquare);
 
@@ -428,40 +465,6 @@ void inverseKinematics(long x, long y) {
   }
 }
 
-void setup() {
-  // set electromagnet pin out
-  pinMode(electromagnetPin, OUTPUT);
-  digitalWrite(electromagnetPin, LOW);
-
-  // specify motor pin as output pins
-  pinMode(xStepPin, OUTPUT);
-  pinMode(xDirPin, OUTPUT);
-  pinMode(yStepPin, OUTPUT);
-  pinMode(yDirPin, OUTPUT);
-  pinMode(zStepPin, OUTPUT);
-  pinMode(zDirPin, OUTPUT);
-
-  // specify limit switch pin outs for normally open operations
-  pinMode(xLimitPin, INPUT_PULLUP); 
-  pinMode(yLimitPin, INPUT_PULLUP); 
-  pinMode(zLimitPin, INPUT_PULLUP);
-
-  // calibrate all X,Y,Z starting positions
-  runCalibrationRoutine();
-
-  xStepperMotor.setNormalMotorSettings();
-  yStepperMotor.setNormalMotorSettings();
-
-  xStepperMotor.motor.setCurrentPosition(0);
-  yStepperMotor.motor.setCurrentPosition(0);
-  zStepperMotor.motor.setCurrentPosition(0);
-
-  gotoParkPosition();
-
-  // start serial communication
-  Serial.begin(9600);
-}
-
 int splitString(String input, char delimiter, String outputArray[]) {
   int tokenIndex = 0;
   int startIndex = 0;
@@ -480,6 +483,28 @@ int splitString(String input, char delimiter, String outputArray[]) {
   return tokenIndex; 
 }
 
+/* this function edits the square state board to reflect the engine move */
+// TODO: THIS WILL NEED EDITS FOR DIFFERENT MOVE TYPES LIKE CASTLING, EN PASSANT, AND PROMOTIONS
+// should be totally functional for quiet moves and capture moves
+void editSquareStates(int fromSquare, int toSquare) {
+  Square temp = squareStates[fromSquare];
+  
+  squareStates[fromSquare].status = PieceStatus::empty;
+  squareStates[fromSquare].color = PieceColor::none;
+
+  squareStates[toSquare] = temp;
+}
+
+void algebraicToSquares(const String& move, int& fromSquare, int& toSquare) {
+  char fromFile = move[0];
+  char fromRank = move[1];
+  char toFile = move[2];
+  char toRank = move[3];
+
+  fromSquare = ((fromRank - '1') * 8) + (fromFile - 'a');
+  toSquare = ((toRank - '1') * 8) + (toFile - 'a');
+}
+
 void processCommand(String input) {
   const char delimiter = ' ';
   String tokens[5];
@@ -491,6 +516,9 @@ void processCommand(String input) {
 
   // moveString should contain a string like "e2e4"
   String moveString = tokens[1];
+
+  int fromSquare = 0, toSquare = 0;
+  algebraicToSquares(moveString, fromSquare, toSquare);
 
   // usage: moveToSquare <square> <piecetype>
   if(commandString == "moveToSquare") {
@@ -518,6 +546,9 @@ void processCommand(String input) {
       } else {
         Serial.println("Error: MOVE command requires an argument.");
       }
+    // switch back to user's move
+    editSquareStates(fromSquare, toSquare);
+    deduceUserMove();
   }
   if(commandString == "docapturemove") {
     if (moveString.length() > 0) {
@@ -527,7 +558,226 @@ void processCommand(String input) {
       } else {
         Serial.println("Error: MOVE command requires an argument.");
       }
+
+    // switch back to user's move
+    editSquareStates(fromSquare, toSquare);
+    deduceUserMove();
   }
+  
+}
+
+void instantiateBoardState() {
+  // for all the white pieces
+  for (int i = 0; i < 16; i++) {
+    squareStates[i].status = PieceStatus::occupied;
+    squareStates[i].color = PieceColor::white;
+  }
+
+  // for all empty middle squares from starting position
+  for(int i = 16; i < 48; i++) {
+    squareStates[i].status = PieceStatus::empty;
+    squareStates[i].color = PieceColor::none;
+  }
+  
+  // for all the black pieces
+  for (int i = 48; i < 64; i++) {
+    squareStates[i].status = PieceStatus::occupied;
+    squareStates[i].color = PieceColor::black;
+  }
+}
+
+uint64_t readShiftRegisters() {
+  // Trigger the latch to store the current state of the inputs
+  digitalWrite(latchPin, LOW);
+  delayMicroseconds(5); // Small delay for stability
+  digitalWrite(latchPin, HIGH);
+  delayMicroseconds(5);
+
+  uint64_t result = 0; // Initialize result
+  for (int i = 0; i < numBits; i++) {
+    digitalWrite(clockPin, LOW);  // Start with clock LOW
+    delayMicroseconds(5);         // Small delay for stability
+    result <<= 1;                 // Shift result to the left
+    result |= digitalRead(dataIn); // Read data bit
+    digitalWrite(clockPin, HIGH); // Pulse clock HIGH
+    delayMicroseconds(5);         // Small delay
+  }
+  digitalWrite(clockPin, LOW);    // Ensure clock ends LOW
+  return result;
+}
+
+String squareNumToAlgebraic(int square) {
+  char file = 'a' + (square - 1) % 8;
+  char rank = '1' + (square - 1) / 8;
+  return String(file) + String(rank);
+}
+
+String combineSquareStrings(int fromSquare, int toSquare) {
+  return squareNumToAlgebraic(fromSquare) + squareNumToAlgebraic(toSquare);
+}
+
+
+void deduceUserMove() {
+  Square currentBoardState[64];
+  for(int i = 0; i < 64; i ++) {
+    currentBoardState[i] = squareStates[i];
+  }
+
+  
+  int potentialMovedFromSquare;
+  int potentialMovedToSquare;
+
+  int potentialCastledFromSquare;
+  int potentialCastledToSquare;
+  
+  bool captureMove = false;
+  bool castleMove = false;
+
+  // while user is modifying the board, waiting until finalized move is indicated
+  while (digitalRead(buttonPin) == 0) {
+    
+    uint64_t binaryBoardState = readShiftRegisters();
+    potentialMovedFromSquare = -1;
+    potentialCastledFromSquare = -1;
+    
+    if(!captureMove) {
+      potentialMovedToSquare = -1;
+      potentialCastledToSquare = -1;
+    }
+    
+    for(int i = 0; i < 64; i++) {
+      if ((binaryBoardState >> i) & 1) {
+          currentBoardState[i].status = PieceStatus::occupied;
+      } else {
+          currentBoardState[i].status = PieceStatus::empty;
+      }
+    }
+
+    for(int i = 0; i < 64; i++) {
+      // if the currently modified square status changes, mark it as potentially movedfromsquare (if it is the user's color)
+      if((currentBoardState[i].status != squareStates[i].status) && (squareStates[i].status == PieceStatus::occupied)) {
+        
+        if(currentBoardState[i].color == PieceColor::white) {
+          // represents actual square number from 1-64
+          if(potentialMovedSquare == -1) {
+            potentialMovedFromSquare = i+1; 
+            Serial.print("Potential moved from square: ");
+            Serial.println(potentialMovedFromSquare);
+          } else {
+            // if it is found that the user is attempting to move another white piece, it must be a castle move as castling is the
+            // only move in chess where two pieces are moved in one turn
+            potentialCastledFromSquare = i+1;
+            castleMove = true;
+            Serial.print("Potential moved from square (castling): ");
+            Serial.println(potentialMovedFromSquare);
+          }
+        }
+       
+        if(currentBoardState[i].color == PieceColor::black) {
+          potentialMovedToSquare = i+1;
+          captureMove = true;
+          Serial.print("Potential moved to square (capture): ");
+          Serial.println(potentialMovedToSquare);
+        }
+      }
+
+      // if the user moves a piece to an empty square (quiet move)
+      if((currentBoardState[i].status == PieceStatus::occupied) && (squareStates[i].status == PieceStatus::empty) && !captureMove) {
+        if(potentialMovedToSquare == -1) {
+          potentialMovedToSquare = i+1;
+          Serial.print("Potential moved to square (quiet move): ");
+          Serial.println(potentialMovedToSquare);
+        } else {
+          potentialCastledToSquare = i+1;
+          Serial.print("Potential moved to square (quiet move)(castling): ");
+          Serial.println(potentialMovedToSquare);
+        }
+
+      }
+    }
+    delay(50);
+  }
+
+  if(potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
+    // error out, something is not correct, have user reset previous position maybe and then try to make a valid move again
+    // may have to recursively call deduceUserMove
+
+    Serial.print("FromSquare: ");
+    Serial.print(potentialMovedFromSquare);
+    Serial.print(" ToSquare: ");
+    Serial.print(potentialMovedToSquare);
+    Serial.print("\n");
+    
+    Serial.println("ERROR: invalid move or failed to deduce move, please reset the board state and try again...");
+    delay(1000);
+    deduceUserMove();
+  }
+
+  // updates current position here
+//  for(int i = 0; i < 64; i ++) {
+//    squareStates[i] = currentBoardState[i];
+//  }
+
+  editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+  // respond to the communication interface with deduced move
+  String finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
+
+  Serial.println(finalizedMove);
+  
+}
+
+void setup() {
+  // set electromagnet pin out
+  pinMode(electromagnetPin, OUTPUT);
+  digitalWrite(electromagnetPin, LOW);
+
+  // specify motor pin as output pins
+  pinMode(xStepPin, OUTPUT);
+  pinMode(xDirPin, OUTPUT);
+  pinMode(yStepPin, OUTPUT);
+  pinMode(yDirPin, OUTPUT);
+  pinMode(zStepPin, OUTPUT);
+  pinMode(zDirPin, OUTPUT);
+
+  // specify limit switch pin outs for normally open operations
+  pinMode(xLimitPin, INPUT_PULLUP); 
+  pinMode(yLimitPin, INPUT_PULLUP); 
+  pinMode(zLimitPin, INPUT_PULLUP);
+
+  // button pin for user move completion feedback
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  
+  // calibrate all X,Y,Z starting positions
+  runCalibrationRoutine();
+
+  xStepperMotor.setNormalMotorSettings();
+  yStepperMotor.setNormalMotorSettings();
+
+  xStepperMotor.motor.setCurrentPosition(0);
+  yStepperMotor.motor.setCurrentPosition(0);
+  zStepperMotor.motor.setCurrentPosition(0);
+
+  gotoParkPosition();
+
+  // start serial communication
+  Serial.begin(9600);
+
+  // specifies board electronics pin configurations
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockEnablePin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataIn, INPUT);
+  
+  digitalWrite(clockPin, LOW); // ensure clock starts low
+
+  digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
+  digitalWrite(latchPin, HIGH);
+
+  instantiateBoardState();
+  whiteToMove = true;
+
+  deduceUserMove();
 }
 
 void loop() {

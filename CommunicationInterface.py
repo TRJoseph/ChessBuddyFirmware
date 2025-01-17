@@ -1,3 +1,4 @@
+import re
 import select
 import serial
 import subprocess
@@ -8,9 +9,9 @@ arduino_port = '/dev/ttyACM0'
 baud_rate = 9600
 ser = serial.Serial(arduino_port, baud_rate, timeout=1)
 
-tigerengine_path = "/c/Users/trjos/Projects/TigerEngine/UCIEngine/bin/Debug/net8.0"
+#tigerengine_path = "/c/Users/trjos/Projects/TigerEngine/UCIEngine/bin/Debug/net8.0"
 
-#tigerengine_path = "/home/thomas/Desktop/ROS/TigerEngineExecutable/TigerEngine"
+tigerengine_path = "/home/thomas/Desktop/ROS/TigerEngineExecutable/TigerEngine"
 
 whiteToMove = True
 moves = []
@@ -24,7 +25,6 @@ piece_types = {
     5: "King"
 }
 
-
 def resetTigerEngine():
     moves.clear()
 
@@ -37,13 +37,23 @@ def send_move_to_tigerengine(tigerengine):
     tigerengine.stdin.write(formattedMoveList)
     tigerengine.stdin.flush()
 
-
 def communicate_with_arduino(message):
+    # Send the message to Arduino
     ser.write(message.encode('utf-8'))
-    time.sleep(1)  # Wait a moment for Arduino to process
-    response = ser.readline().decode('utf-8').strip()
-    print(f"Arduino says: {response}")
-    return response
+    time.sleep(1)  # Give Arduino some time to respond
+
+    # Collect all lines of response
+    responses = []
+    while True:
+        if ser.in_waiting > 0:  # Check if there's data available in the buffer
+            line = ser.readline().decode('utf-8').strip()  # Read a line
+            print(f"Arduino: {line}")  # Print each line for debugging
+            responses.append(line)  # Add to the list of responses
+            time.sleep(0.1)
+        else:
+            break
+
+    return responses  # Return all lines as a list
 
 def clear_initial_output(tigerengine, num_lines=5):
     for _ in range(num_lines):
@@ -58,6 +68,10 @@ def extract_moved_piece(pieceMovedSubstring):
     except IndexError:
         print("Error parsing response")
         return None  # Handle error case where the response is not in expected format
+
+def isValidChessMove(move):
+    pattern = r"^[a-h][1-8][a-h][1-8][qrnb]?$"
+    return bool(re.match(pattern, move))
 
 def run_tigerengine():
 
@@ -77,17 +91,20 @@ def run_tigerengine():
 
     return tigerengine
 
+
 def main():
     tigerengine = run_tigerengine()
-
+    
     while True:
-        move = input("Enter your chess move (e.g., e2e4): ")
-        
-        if move.lower() == 'quit':
-            print("Exiting game...")
-            break
+        while True:
+            if ser.in_waiting > 0:
+                executedMove = ser.readline().decode('utf-8').strip()
+                print(f"User Executed Move: {executedMove}")
+                if isValidChessMove(executedMove):
+                    break
+                time.sleep(0.05)
 
-        moves.append(move)
+        moves.append(executedMove)
         print(f"Moves so far: {moves}")
 
         # send the new move to TigerEngine and get the response
@@ -126,7 +143,7 @@ def main():
                     if "capturedPiece" in cleanedUpTigerMoveResponse:
                         capturedPiece = extract_moved_piece(splitResponse[2])
                         capturedPiece = piece_types.get(capturedPiece, "Unknown Piece")
-                        arduinoCommandString = "docapturemove " + moveString + " " + movedPiece + " " + " " + capturedPiece
+                        arduinoCommandString = "docapturemove " + moveString + " " + movedPiece + " " + capturedPiece
                         arduino_response = communicate_with_arduino(arduinoCommandString)
                         print(f"Response from Arduino: {arduino_response}")
                     else:
