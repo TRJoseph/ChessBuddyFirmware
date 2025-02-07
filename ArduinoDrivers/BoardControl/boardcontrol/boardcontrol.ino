@@ -1,3 +1,5 @@
+/* THIS IS A TEST FILE TO ISOLATE THE ELECTRONICS ON THE CHESSBOARD ITSELF FOR TESTING*/
+
 // Pin definitions
 const int latchPin = 22;      // Pin to trigger the latch
 const int clockEnablePin = 23; // Clock enable pin
@@ -49,7 +51,7 @@ void loop() {
   uint64_t boardState = readShiftRegisters();
   // Print the board state in binary
   Serial.print("Board state: ");
-  for (int i = numBits - 1; i >= 0; i--) {
+  for (int i = numBits - 1; i >= 0; i--) {                                                  
     Serial.print((int)(boardState >> i) & 1); // Print each bit
     if (i % 8 == 0) Serial.print(" ");  // Add space after every 8 bits
   }

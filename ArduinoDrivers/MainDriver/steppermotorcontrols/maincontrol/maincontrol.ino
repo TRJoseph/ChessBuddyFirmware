@@ -43,7 +43,7 @@ const long ArmSegment2Length = 170;
 
 // X Axis step pins
 const int xStepPin = 2;
-const int xDirPin = 5;
+const int xDirPin = 5; 
 
 // Y Axis step pins
 const int yStepPin = 3;
@@ -164,7 +164,7 @@ KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::Pawn, -3740},
     {PieceType::Knight, -2980},
     {PieceType::Bishop, -2500},
-    {PieceType::Rook, -3350},
+    {PieceType::Rook, -3370},
     {PieceType::Queen, -1940},
     {PieceType::King, -650} // king is good
 };
@@ -238,8 +238,8 @@ public:
 
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
 StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 10, baseStepperAccel / 2);
-StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 3, 1000, 1250.0 , baseStepperAccel);
-StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 3, 10000, baseStepperSpeed, 1000); 
+StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 4, 2500, 1250.0 , baseStepperAccel);
+StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 5, 10000, baseStepperSpeed, 1000); 
 
 AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
 AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
@@ -309,11 +309,85 @@ void performQuietMove(String moveString, PieceType pieceType = PieceType::King, 
   digitalWrite(electromagnetPin, HIGH);
 
   // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-  zStepperMotor.moveTo(8000 + pieceZOffset);
+  zStepperMotor.moveTo(8200 + pieceZOffset);
 
   moveToSquare(toSquare);
 
   zStepperMotor.moveTo(pieceZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(5500);
+
+  gotoParkPosition();
+}
+
+void performKingSideCastle(String moveString) {
+  
+  int kingZOffset = getPieceZOffset(PieceType::King);
+  int rookZOffset = getPieceZOffset(PieceType::Rook);
+
+  moveToSquare("e8");
+  
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(kingZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+  
+  zStepperMotor.moveTo(8200 + kingZOffset);
+
+  moveToSquare("g8");
+
+  zStepperMotor.moveTo(kingZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(5500);
+  
+  // move the rook
+  moveToSquare("h8");
+  
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(rookZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+  
+  zStepperMotor.moveTo(8200 + rookZOffset);
+
+  moveToSquare("f8");
+  
+  zStepperMotor.moveTo(rookZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(5500);
+
+  gotoParkPosition();
+  
+}
+
+void performQueenSideCastle(String moveString) {
+  int kingZOffset = getPieceZOffset(PieceType::King);
+  int rookZOffset = getPieceZOffset(PieceType::Rook);
+
+  moveToSquare("e8");
+  
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(kingZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+  
+  zStepperMotor.moveTo(8200 + kingZOffset);
+
+  moveToSquare("c8");
+
+  zStepperMotor.moveTo(kingZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveTo(5500);
+  
+  // move the rook
+  moveToSquare("a8");
+  
+  //move down and trigger magnet high
+  zStepperMotor.moveTo(rookZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+  
+  zStepperMotor.moveTo(8200 + rookZOffset);
+
+  moveToSquare("d8");
+  
+  zStepperMotor.moveTo(rookZOffset);
   digitalWrite(electromagnetPin, LOW);
   zStepperMotor.moveTo(5500);
 
@@ -338,13 +412,13 @@ void performCaptureMove(String moveString, PieceType pieceType = PieceType::King
   //move down and trigger magnet high
   zStepperMotor.moveTo(capturedPieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
-  zStepperMotor.moveTo(8000 + capturedPieceZOffset);
+  zStepperMotor.moveTo(8200 + capturedPieceZOffset);
   // go to park position to drop off captured piece
   gotoParkPosition();
   
-  zStepperMotor.moveTo(capturedPieceZOffset);
+  //zStepperMotor.moveTo(5500);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(0);
+  //zStepperMotor.moveTo(0);
 
   moveToSquare(fromSquare);
 
@@ -358,7 +432,7 @@ void performCaptureMove(String moveString, PieceType pieceType = PieceType::King
 
   zStepperMotor.moveTo(pieceZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(0);
+  zStepperMotor.moveTo(5500);
 
   gotoParkPosition();
 }
@@ -563,6 +637,20 @@ void processCommand(String input) {
     editSquareStates(fromSquare, toSquare);
     deduceUserMove();
   }
+
+  if(commandString == "dokingsidecastle") {
+    performKingSideCastle(moveString);
+    editSquareStates(61, 63);
+    editSquareStates(64, 62);
+    deduceUserMove();
+  }
+
+  if(commandString == "doqueensidecastle") {
+    performQueenSideCastle(moveString);
+    editSquareStates(61, 59);
+    editSquareStates(57, 60);
+    deduceUserMove();
+  }
   
 }
 
@@ -632,17 +720,22 @@ void deduceUserMove() {
   
   bool captureMove = false;
   bool castleMove = false;
+  int numPiecesPickedUp;
 
   // while user is modifying the board, waiting until finalized move is indicated
   while (digitalRead(buttonPin) == 0) {
     
     uint64_t binaryBoardState = readShiftRegisters();
+    delay(50); // allow settling
+    uint64_t stableBoardState = readShiftRegisters();
+    if (binaryBoardState != stableBoardState) {
+        continue; // skip this loop iteration if state is not stable
+    }
     potentialMovedFromSquare = -1;
-    potentialCastledFromSquare = -1;
+    numPiecesPickedUp = 0;
     
     if(!captureMove) {
       potentialMovedToSquare = -1;
-      potentialCastledToSquare = -1;
     }
     
     for(int i = 0; i < 64; i++) {
@@ -659,18 +752,14 @@ void deduceUserMove() {
         
         if(currentBoardState[i].color == PieceColor::white) {
           // represents actual square number from 1-64
-          if(potentialMovedSquare == -1) {
+          if(potentialMovedFromSquare == -1) {
             potentialMovedFromSquare = i+1; 
             Serial.print("Potential moved from square: ");
             Serial.println(potentialMovedFromSquare);
-          } else {
-            // if it is found that the user is attempting to move another white piece, it must be a castle move as castling is the
-            // only move in chess where two pieces are moved in one turn
-            potentialCastledFromSquare = i+1;
-            castleMove = true;
-            Serial.print("Potential moved from square (castling): ");
-            Serial.println(potentialMovedFromSquare);
           }
+          numPiecesPickedUp++;
+          Serial.print("num pieces picked up: ");
+          Serial.println(numPiecesPickedUp);
         }
        
         if(currentBoardState[i].color == PieceColor::black) {
@@ -687,12 +776,7 @@ void deduceUserMove() {
           potentialMovedToSquare = i+1;
           Serial.print("Potential moved to square (quiet move): ");
           Serial.println(potentialMovedToSquare);
-        } else {
-          potentialCastledToSquare = i+1;
-          Serial.print("Potential moved to square (quiet move)(castling): ");
-          Serial.println(potentialMovedToSquare);
         }
-
       }
     }
     delay(50);
@@ -718,18 +802,39 @@ void deduceUserMove() {
 //    squareStates[i] = currentBoardState[i];
 //  }
 
-  editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
-  // respond to the communication interface with deduced move
-  String finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
 
-  Serial.println(finalizedMove);
+  if(numPiecesPickedUp >= 2) {
+    // TODO: add finalizedmove logic here but ensure that the move sent is actually the 'kings' moved square
+    // this will likely require some hard coding of potential move from and to squares
+
+    // if kingside castle swap king and rook squares internally
+    if(potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
+      editSquareStates(4, 6);
+      editSquareStates(7, 5);
+      String finalizedMove = combineSquareStrings(5, 7);
+      Serial.println(finalizedMove);
+    } else {
+      // queenside castle move by user
+      editSquareStates(4, 2);
+      editSquareStates(0, 3);
+      String finalizedMove = combineSquareStrings(5, 3);
+      Serial.println(finalizedMove);
+    }
+  } else {
+    editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+      // respond to the communication interface with deduced move
+    String finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
+
+    Serial.println(finalizedMove);
+  }
+
   
 }
 
 void setup() {
   // set electromagnet pin out
-  pinMode(electromagnetPin, OUTPUT);
-  digitalWrite(electromagnetPin, LOW);
+ pinMode(electromagnetPin, OUTPUT);
+ digitalWrite(electromagnetPin, LOW);
 
   // specify motor pin as output pins
   pinMode(xStepPin, OUTPUT);
@@ -739,17 +844,17 @@ void setup() {
   pinMode(zStepPin, OUTPUT);
   pinMode(zDirPin, OUTPUT);
 
-  // specify limit switch pin outs for normally open operations
-  pinMode(xLimitPin, INPUT_PULLUP); 
-  pinMode(yLimitPin, INPUT_PULLUP); 
-  pinMode(zLimitPin, INPUT_PULLUP);
+ // specify limit switch pin outs for normally open operations
+ pinMode(xLimitPin, INPUT_PULLUP); 
+ pinMode(yLimitPin, INPUT_PULLUP); 
+ pinMode(zLimitPin, INPUT_PULLUP);
 
-  // button pin for user move completion feedback
-  pinMode(buttonPin, INPUT_PULLUP);
+ // button pin for user move completion feedback
+ pinMode(buttonPin, INPUT_PULLUP);
 
-  
-  // calibrate all X,Y,Z starting positions
-  runCalibrationRoutine();
+ 
+ // calibrate all X,Y,Z starting positions
+ runCalibrationRoutine();
 
   xStepperMotor.setNormalMotorSettings();
   yStepperMotor.setNormalMotorSettings();
@@ -758,26 +863,26 @@ void setup() {
   yStepperMotor.motor.setCurrentPosition(0);
   zStepperMotor.motor.setCurrentPosition(0);
 
-  gotoParkPosition();
+ gotoParkPosition();
 
-  // start serial communication
-  Serial.begin(9600);
+ // start serial communication
+ Serial.begin(9600);
 
-  // specifies board electronics pin configurations
-  pinMode(latchPin, OUTPUT);
-  pinMode(clockEnablePin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(dataIn, INPUT);
-  
-  digitalWrite(clockPin, LOW); // ensure clock starts low
+ // specifies board electronics pin configurations
+ pinMode(latchPin, OUTPUT);
+ pinMode(clockEnablePin, OUTPUT);
+ pinMode(clockPin, OUTPUT);
+ pinMode(dataIn, INPUT);
+ 
+ digitalWrite(clockPin, LOW); // ensure clock starts low
 
-  digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
-  digitalWrite(latchPin, HIGH);
+ digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
+ digitalWrite(latchPin, HIGH);
 
-  instantiateBoardState();
-  whiteToMove = true;
+ instantiateBoardState();
+ whiteToMove = true;
 
-  deduceUserMove();
+ deduceUserMove();
 }
 
 void loop() {

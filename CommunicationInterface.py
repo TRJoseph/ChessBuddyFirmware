@@ -146,6 +146,14 @@ def main():
                         arduinoCommandString = "docapturemove " + moveString + " " + movedPiece + " " + capturedPiece
                         arduino_response = communicate_with_arduino(arduinoCommandString)
                         print(f"Response from Arduino: {arduino_response}")
+                    elif "KingSideCastle" in cleanedUpTigerMoveResponse:
+                        arduinoCommandString = "dokingsidecastle " + moveString
+                        arduino_response = communicate_with_arduino(arduinoCommandString)
+                        print(f"Response from Arduino: {arduino_response}")
+                    elif "QueenSideCastle" in cleanedUpTigerMoveResponse:
+                        arduinoCommandString = "doqueensidecastle" + moveString
+                        arduino_response = communicate_with_arduino(arduinoCommandString)
+                        print(f"Response from Arduino: {arduino_response}")
                     else:
                         # MAKE ROBOT PERFORM NORMAL QUIET MOVE
                         arduinoCommandString = "doquietmove " + moveString + " " + movedPiece
