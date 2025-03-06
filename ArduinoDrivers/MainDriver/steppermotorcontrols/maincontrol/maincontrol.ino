@@ -4,11 +4,17 @@
 
 /* */
 // PIN DEFINITIONS FOR ELECTRONIC CHESS BOARD COMPONENT
-const int latchPin = 22;
-const int clockEnablePin = 23;
-const int dataIn = 25;
-const int clockPin = 24;
+//const int latchPin = 22;
+//const int clockEnablePin = 23;
+//const int dataIn = 25;
+//const int clockPin = 24;
 const int buttonPin = 52;
+
+// new pin numbers with arduino nano
+const int latchPin = 7;      // Pin to trigger the latch
+const int clockEnablePin = 9; // Clock enable pin
+const int dataIn = 6;        // Serial data input pin
+const int clockPin = 8;      // Shift clock pin
 
 // Number of shift registers in the daisy chain
 const int numRegisters = 8;
@@ -42,97 +48,108 @@ const long ArmSegment1Length = 260;
 const long ArmSegment2Length = 170;
 
 // X Axis step pins
-const int xStepPin = 2;
-const int xDirPin = 5; 
+//const int xStepPin = 2;
+//const int xDirPin = 5; 
+//
+//// Y Axis step pins
+//const int yStepPin = 3;
+//const int yDirPin = 6;
+//
+//// Z Axis step pins
+//const int zStepPin = 4;
+//const int zDirPin = 7;
+
+const int xStepPin = A1;
+const int xDirPin = A0; 
 
 // Y Axis step pins
-const int yStepPin = 3;
-const int yDirPin = 6;
+const int yStepPin = A3;
+const int yDirPin = A2;
 
 // Z Axis step pins
-const int zStepPin = 4;
-const int zDirPin = 7;
+const int zStepPin = A5;
+const int zDirPin = A4;
 
 const long stepsPerRevolution = 800;  // Adjust for quarter-stepping
 
 // Electromagnet Control
-const int electromagnetPin = 12;
+const int electromagnetPin = 5;
 
 // Chess board x,y positions relative to the robotic arm
 // bottom left square is index 0, top right square is index 63
 int SquarePositions[64][2] = {
   // 1st rank
-  {-137,100}, 
-  {-99,100},
-  {-62,100},
-  {-24,100},
-  {16,100},
-  {57,100},
-  {95,100},
-  {133,100},
+  {-135, 102}, 
+  {-97, 102},
+  {-60, 102},
+  {-22, 102},
+  {18, 102},
+  {59, 102},
+  {97, 102},
+  {135, 102},
   // 2nd rank
-  {-137,138}, 
-  {-99,138},
-  {-62,138},
-  {-24,138},
-  {16,138},
-  {57,138},
-  {95,138},
-  {133,138},
+  {-135, 140}, 
+  {-97, 140},
+  {-60, 140},
+  {-22, 140},
+  {18, 140},
+  {59, 140},
+  {97, 140},
+  {135, 140},
   // 3rd rank
-  {-137,180}, 
-  {-99,180},
-  {-62,180},
-  {-24,180},
-  {16,180},
-  {57,180},
-  {95,180},
-  {133,180},
+  {-135, 182}, 
+  {-97, 182},
+  {-60, 182},
+  {-22, 182},
+  {18, 182},
+  {59, 182},
+  {97, 182},
+  {135, 182},
   // 4th rank
-  {-137,218}, 
-  {-99,218},
-  {-62,218},
-  {-24,218},
-  {16,218},
-  {57,218},
-  {95,218},
-  {133,218},
+  {-135, 220}, 
+  {-97, 220},
+  {-60, 220},
+  {-22, 220},
+  {18, 220},
+  {59, 220},
+  {97, 220},
+  {135, 220},
   // 5th rank
-  {-137,256}, 
-  {-99,256},
-  {-62,256},
-  {-24,256},
-  {16,256},
-  {57,256},
-  {95,256},
-  {133,256},
+  {-135, 258}, 
+  {-97, 258},
+  {-60, 258},
+  {-22, 258},
+  {18, 258},
+  {59, 258},
+  {97, 258},
+  {135, 258},
   // 6th rank
-  {-137,295}, 
-  {-99,295},
-  {-62,295},
-  {-24,295},
-  {16,295},
-  {57,295},
-  {95,295},
-  {133,295},
+  {-135, 297}, 
+  {-97, 297},
+  {-60, 297},
+  {-22, 297},
+  {18, 297},
+  {59, 297},
+  {97, 297},
+  {135, 297},
   // 7th rank
-  {-137,334}, 
-  {-99,334},
-  {-62,334},
-  {-24,334},
-  {16,334},
-  {57,334},
-  {95,334},
-  {133,334},
+  {-135, 336}, 
+  {-97, 336},
+  {-60, 336},
+  {-22, 336},
+  {18, 336},
+  {59, 336},
+  {97, 336},
+  {135, 336},
   // 8th rank
-  {-137,373}, 
-  {-99,373},
-  {-62,373},
-  {-24,373},
-  {16,373},
-  {57,373},
-  {95,373},
-  {133,373},
+  {-135, 375}, 
+  {-97, 375},
+  {-60, 375},
+  {-22, 375},
+  {18, 375},
+  {59, 375},
+  {97, 375},
+  {135, 375},
 };
 
 
@@ -171,9 +188,9 @@ KeyValuePair PieceZAxisOffsets[] = {
 
 /* */
 // Limit switch pinout constants
-const int xLimitPin = 9;
-const int yLimitPin = 10;
-const int zLimitPin = 11;
+const int xLimitPin = 10;
+const int yLimitPin = 11;
+const int zLimitPin = 12;
 /* */
 
 const double BaseGearReductionRatio = 5.5;
@@ -212,7 +229,8 @@ public:
         
         motor.moveTo(-30000);  // move far in reverse
   
-        while (digitalRead(limitSwitchPin) == HIGH) {
+        while (digitalRead(limitSwitchPin) == LOW) {
+          Serial.println("Axis Calibrated");
           motor.run();    // continue running until switch is triggered
         }
 
@@ -237,13 +255,13 @@ public:
 };
 
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 10, baseStepperAccel / 2);
-StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 4, 2500, 1250.0 , baseStepperAccel);
+StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 8, 1000);
+StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 4, 2500, 1000, 1000);
 StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 5, 10000, baseStepperSpeed, 1000); 
 
-AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
-AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
-AccelStepper zStepper(AccelStepper::DRIVER, zStepPin, zDirPin);
+//AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
+//AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
+//AccelStepper zStepper(AccelStepper::DRIVER, zStepPin, zDirPin);
 
 void runCalibrationRoutine() {
 
@@ -252,14 +270,14 @@ void runCalibrationRoutine() {
   //zStepperMotor.moveTo(3500);
 
   xStepperMotor.calibrate(xLimitPin);
-  xStepperMotor.moveTo(1810);
+  //xStepperMotor.moveTo(1810);
 
   yStepperMotor.calibrate(yLimitPin);
-  yStepperMotor.moveTo(10270);
+  yStepperMotor.moveTo(10280);
 
   zStepperMotor.calibrate(zLimitPin);
   zStepperMotor.moveTo(9500);
-  xStepperMotor.moveTo(2885);
+  xStepperMotor.moveTo(729);
 }
 
 void gotoParkPosition() {
@@ -833,9 +851,9 @@ void deduceUserMove() {
 
 void setup() {
   // set electromagnet pin out
- pinMode(electromagnetPin, OUTPUT);
- digitalWrite(electromagnetPin, LOW);
-
+  pinMode(electromagnetPin, OUTPUT);
+  digitalWrite(electromagnetPin, LOW);
+  
   // specify motor pin as output pins
   pinMode(xStepPin, OUTPUT);
   pinMode(xDirPin, OUTPUT);
@@ -843,46 +861,45 @@ void setup() {
   pinMode(yDirPin, OUTPUT);
   pinMode(zStepPin, OUTPUT);
   pinMode(zDirPin, OUTPUT);
-
- // specify limit switch pin outs for normally open operations
- pinMode(xLimitPin, INPUT_PULLUP); 
- pinMode(yLimitPin, INPUT_PULLUP); 
- pinMode(zLimitPin, INPUT_PULLUP);
-
- // button pin for user move completion feedback
- pinMode(buttonPin, INPUT_PULLUP);
-
- 
- // calibrate all X,Y,Z starting positions
- runCalibrationRoutine();
+  
+  // specify limit switch pin outs for normally open operations
+  pinMode(xLimitPin, INPUT_PULLUP); 
+  pinMode(yLimitPin, INPUT_PULLUP); 
+  pinMode(zLimitPin, INPUT_PULLUP);
+  
+  // button pin for user move completion feedback
+  //pinMode(buttonPin, INPUT_PULLUP);
+  
+  // calibrate all X,Y,Z starting positions
+  runCalibrationRoutine();
 
   xStepperMotor.setNormalMotorSettings();
   yStepperMotor.setNormalMotorSettings();
-
+  
   xStepperMotor.motor.setCurrentPosition(0);
   yStepperMotor.motor.setCurrentPosition(0);
   zStepperMotor.motor.setCurrentPosition(0);
 
- gotoParkPosition();
-
- // start serial communication
- Serial.begin(9600);
-
- // specifies board electronics pin configurations
- pinMode(latchPin, OUTPUT);
- pinMode(clockEnablePin, OUTPUT);
- pinMode(clockPin, OUTPUT);
- pinMode(dataIn, INPUT);
- 
- digitalWrite(clockPin, LOW); // ensure clock starts low
-
- digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
- digitalWrite(latchPin, HIGH);
-
- instantiateBoardState();
- whiteToMove = true;
-
- deduceUserMove();
+  gotoParkPosition();
+  
+  // start serial communication
+  Serial.begin(9600);
+  
+  // specifies board electronics pin configurations
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockEnablePin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataIn, INPUT);
+  
+  digitalWrite(clockPin, LOW); // ensure clock starts low
+  
+  digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
+  digitalWrite(latchPin, HIGH);
+  
+  instantiateBoardState();
+  whiteToMove = true;
+  
+  deduceUserMove();
 }
 
 void loop() {

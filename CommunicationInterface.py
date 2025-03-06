@@ -5,7 +5,7 @@ import subprocess
 import time
 from serial import Serial
 
-arduino_port = '/dev/ttyACM0'
+arduino_port = '/dev/ttyUSB3'
 baud_rate = 9600
 ser = serial.Serial(arduino_port, baud_rate, timeout=1)
 
@@ -103,6 +103,15 @@ def main():
                 if isValidChessMove(executedMove):
                     break
                 time.sleep(0.05)
+            try:
+                user_input = input()  # Press Enter to finalize
+                if user_input == "":
+                    ser.write("STOP\n".encode('utf-8'))  # Send STOP command
+                    break
+            except KeyboardInterrupt:
+                print("Interrupted")
+                break
+            time.sleep(0.05)  # Avoid CPU overload
 
         moves.append(executedMove)
         print(f"Moves so far: {moves}")

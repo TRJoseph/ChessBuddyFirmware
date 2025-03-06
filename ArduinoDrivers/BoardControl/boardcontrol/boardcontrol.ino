@@ -1,10 +1,17 @@
 /* THIS IS A TEST FILE TO ISOLATE THE ELECTRONICS ON THE CHESSBOARD ITSELF FOR TESTING*/
 
 // Pin definitions
-const int latchPin = 22;      // Pin to trigger the latch
-const int clockEnablePin = 23; // Clock enable pin
-const int dataIn = 25;        // Serial data input pin
-const int clockPin = 24;      // Shift clock pin
+//const int latchPin = 22;      // Pin to trigger the latch
+//const int clockEnablePin = 23; // Clock enable pin
+//const int dataIn = 25;        // Serial data input pin
+//const int clockPin = 24;      // Shift clock pin
+
+
+// new with arduino nano
+const int latchPin = 7;      // Pin to trigger the latch
+const int clockEnablePin = 9; // Clock enable pin
+const int dataIn = 6;        // Serial data input pin
+const int clockPin = 8;      // Shift clock pin
 
 // Number of shift registers in the chain
 const int numRegisters = 8; // 8 shift registers
