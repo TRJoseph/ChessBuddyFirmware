@@ -1,0 +1,13 @@
+#Python virtual
+venv/
+env/
+.venv/
+
+python/src/venv/*
+python/src/initializeEnv
+
+
+__pycache__/
+
+*.o
+*.log
