@@ -8,7 +8,7 @@
 //const int clockEnablePin = 23;
 //const int dataIn = 25;
 //const int clockPin = 24;
-const int buttonPin = 52;
+const int buttonPin = 4;
 
 // new pin numbers with arduino nano
 const int latchPin = 7;      // Pin to trigger the latch
@@ -868,7 +868,7 @@ void setup() {
   pinMode(zLimitPin, INPUT_PULLUP);
   
   // button pin for user move completion feedback
-  //pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(buttonPin, INPUT_PULLUP);
   
   // calibrate all X,Y,Z starting positions
   runCalibrationRoutine();
