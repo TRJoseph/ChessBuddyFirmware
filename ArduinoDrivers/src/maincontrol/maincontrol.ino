@@ -9,6 +9,7 @@
 //const int dataIn = 25;
 //const int clockPin = 24;
 const int buttonPin = 4;
+const int ledPin = LED_BUILTIN; 
 
 // new pin numbers with arduino nano
 const int latchPin = 7;      // Pin to trigger the latch
@@ -33,9 +34,14 @@ enum PieceColor {
   black
 };
 
+//struct Square {
+//    PieceStatus status;
+//    PieceColor color;
+//};
+
 struct Square {
-    PieceStatus status;
-    PieceColor color;
+    byte status; // 0=empty, 1=occupied, 2=potentially_captured
+    byte color;  // 0=none, 1=white, 2=black
 };
 
 Square squareStates[64];
@@ -152,6 +158,7 @@ int SquarePositions[64][2] = {
   {135, 375},
 };
 
+Square currentBoardState[64];
 
 enum class SpecialMove {
     None,
@@ -579,11 +586,13 @@ int splitString(String input, char delimiter, String outputArray[]) {
 // TODO: THIS WILL NEED EDITS FOR DIFFERENT MOVE TYPES LIKE CASTLING, EN PASSANT, AND PROMOTIONS
 // should be totally functional for quiet moves and capture moves
 void editSquareStates(int fromSquare, int toSquare) {
+  if (fromSquare < 0 || fromSquare > 63 || toSquare < 0 || toSquare > 63) {
+    Serial.println("Error: Square index out of bounds");
+    return;
+  }
   Square temp = squareStates[fromSquare];
-  
-  squareStates[fromSquare].status = PieceStatus::empty;
-  squareStates[fromSquare].color = PieceColor::none;
-
+  squareStates[fromSquare].status = 0;
+  squareStates[fromSquare].color = 0;
   squareStates[toSquare] = temp;
 }
 
@@ -648,7 +657,7 @@ void processCommand(String input) {
         performCaptureMove(moveString, stringToPieceType(tokens[2]), stringToPieceType(tokens[3]));
         Serial.println("Executed move: " + moveString);
       } else {
-        Serial.println("Error: MOVE command requires an argument.");
+        //Serial.println("Error: MOVE command requires an argument.");
       }
 
     // switch back to user's move
@@ -675,20 +684,20 @@ void processCommand(String input) {
 void instantiateBoardState() {
   // for all the white pieces
   for (int i = 0; i < 16; i++) {
-    squareStates[i].status = PieceStatus::occupied;
-    squareStates[i].color = PieceColor::white;
+    squareStates[i].status = 1;
+    squareStates[i].color = 1;
   }
 
   // for all empty middle squares from starting position
   for(int i = 16; i < 48; i++) {
-    squareStates[i].status = PieceStatus::empty;
-    squareStates[i].color = PieceColor::none;
+    squareStates[i].status = 0;
+    squareStates[i].color = 0;
   }
   
   // for all the black pieces
   for (int i = 48; i < 64; i++) {
-    squareStates[i].status = PieceStatus::occupied;
-    squareStates[i].color = PieceColor::black;
+    squareStates[i].status = 1;
+    squareStates[i].color = 2;
   }
 }
 
@@ -724,129 +733,96 @@ String combineSquareStrings(int fromSquare, int toSquare) {
 
 
 void deduceUserMove() {
-  Square currentBoardState[64];
-  for(int i = 0; i < 64; i ++) {
-    currentBoardState[i] = squareStates[i];
+  bool validMove = false;
+  
+  // Wait for button to be released (assuming LOW is pressed)
+  while (digitalRead(buttonPin) == LOW) {
+      delay(10); // Small delay to avoid busy-waiting
   }
-
-  
-  int potentialMovedFromSquare;
-  int potentialMovedToSquare;
-
-  int potentialCastledFromSquare;
-  int potentialCastledToSquare;
-  
-  bool captureMove = false;
-  bool castleMove = false;
-  int numPiecesPickedUp;
-
-  // while user is modifying the board, waiting until finalized move is indicated
-  while (digitalRead(buttonPin) == 0) {
     
-    uint64_t binaryBoardState = readShiftRegisters();
-    delay(50); // allow settling
-    uint64_t stableBoardState = readShiftRegisters();
-    if (binaryBoardState != stableBoardState) {
-        continue; // skip this loop iteration if state is not stable
+  while (!validMove) {
+    // Copy initial state
+    for (int i = 0; i < 64; i++) {
+      currentBoardState[i] = squareStates[i];
     }
-    potentialMovedFromSquare = -1;
-    numPiecesPickedUp = 0;
-    
-    if(!captureMove) {
-      potentialMovedToSquare = -1;
-    }
-    
-    for(int i = 0; i < 64; i++) {
-      if ((binaryBoardState >> i) & 1) {
-          currentBoardState[i].status = PieceStatus::occupied;
-      } else {
-          currentBoardState[i].status = PieceStatus::empty;
+    int potentialMovedFromSquare = -1;
+    int potentialMovedToSquare = -1;
+    int numPiecesPickedUp = 0;
+    bool captureMove = false;
+
+    while (digitalRead(buttonPin) == HIGH) {
+      digitalWrite(ledPin, HIGH); // Turn LED on
+      uint64_t binaryBoardState = readShiftRegisters();
+      delay(50);
+      uint64_t stableBoardState = readShiftRegisters();
+      if (binaryBoardState != stableBoardState) continue;
+
+      potentialMovedFromSquare = -1;
+      numPiecesPickedUp = 0;
+      if (!captureMove) potentialMovedToSquare = -1;
+
+      // Update board state
+      for (int i = 0; i < 64; i++) {
+        currentBoardState[i].status = (binaryBoardState >> i) & 1 ? 1 : 0;
       }
-    }
 
-    for(int i = 0; i < 64; i++) {
-      // if the currently modified square status changes, mark it as potentially movedfromsquare (if it is the user's color)
-      if((currentBoardState[i].status != squareStates[i].status) && (squareStates[i].status == PieceStatus::occupied)) {
-        
-        if(currentBoardState[i].color == PieceColor::white) {
-          // represents actual square number from 1-64
-          if(potentialMovedFromSquare == -1) {
-            potentialMovedFromSquare = i+1; 
-            Serial.print("Potential moved from square: ");
-            Serial.println(potentialMovedFromSquare);
+      // Detect move
+      for (int i = 0; i < 64; i++) {
+        if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
+          if (currentBoardState[i].color == 1) {
+            if (potentialMovedFromSquare == -1) {
+              potentialMovedFromSquare = i + 1;
+              //Serial.print("Potential moved from square: ");
+              //Serial.println(potentialMovedFromSquare);
+            }
+            numPiecesPickedUp++;
           }
-          numPiecesPickedUp++;
-          Serial.print("num pieces picked up: ");
-          Serial.println(numPiecesPickedUp);
+          if (currentBoardState[i].color == 2) {
+            potentialMovedToSquare = i + 1;
+            captureMove = true;
+            //Serial.print("Potential moved to square (capture): ");
+            //Serial.println(potentialMovedToSquare);
+          }
         }
-       
-        if(currentBoardState[i].color == PieceColor::black) {
-          potentialMovedToSquare = i+1;
-          captureMove = true;
-          Serial.print("Potential moved to square (capture): ");
-          Serial.println(potentialMovedToSquare);
-        }
-      }
-
-      // if the user moves a piece to an empty square (quiet move)
-      if((currentBoardState[i].status == PieceStatus::occupied) && (squareStates[i].status == PieceStatus::empty) && !captureMove) {
-        if(potentialMovedToSquare == -1) {
-          potentialMovedToSquare = i+1;
-          Serial.print("Potential moved to square (quiet move): ");
-          Serial.println(potentialMovedToSquare);
+        if (currentBoardState[i].status == 1 && squareStates[i].status == 0 && !captureMove) {
+          if (potentialMovedToSquare == -1) {
+            potentialMovedToSquare = i + 1;
+            //Serial.print("Potential moved to square (quiet move): ");
+            //Serial.println(potentialMovedToSquare);
+          }
         }
       }
+      delay(50);
     }
-    delay(50);
-  }
+    digitalWrite(ledPin, LOW); // Turn LED off
 
-  if(potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
-    // error out, something is not correct, have user reset previous position maybe and then try to make a valid move again
-    // may have to recursively call deduceUserMove
+    // Check validity
+    if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
+      //Serial.println("ERROR - Retry");
+      delay(1000);
+      continue;  // Retry instead of recurse
+    }
+    validMove = true;
 
-    Serial.print("FromSquare: ");
-    Serial.print(potentialMovedFromSquare);
-    Serial.print(" ToSquare: ");
-    Serial.print(potentialMovedToSquare);
-    Serial.print("\n");
-    
-    Serial.println("ERROR: invalid move or failed to deduce move, please reset the board state and try again...");
-    delay(1000);
-    deduceUserMove();
-  }
-
-  // updates current position here
-//  for(int i = 0; i < 64; i ++) {
-//    squareStates[i] = currentBoardState[i];
-//  }
-
-
-  if(numPiecesPickedUp >= 2) {
-    // TODO: add finalizedmove logic here but ensure that the move sent is actually the 'kings' moved square
-    // this will likely require some hard coding of potential move from and to squares
-
-    // if kingside castle swap king and rook squares internally
-    if(potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
-      editSquareStates(4, 6);
-      editSquareStates(7, 5);
-      String finalizedMove = combineSquareStrings(5, 7);
-      Serial.println(finalizedMove);
+    // Process move (castling or normal)
+    if (numPiecesPickedUp >= 2) {
+      if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
+        editSquareStates(4, 6);
+        editSquareStates(7, 5);
+        String finalizedMove = combineSquareStrings(5, 7);
+        Serial.println(finalizedMove);
+      } else {
+        editSquareStates(4, 2);
+        editSquareStates(0, 3);
+        String finalizedMove = combineSquareStrings(5, 3);
+        Serial.println(finalizedMove);
+      }
     } else {
-      // queenside castle move by user
-      editSquareStates(4, 2);
-      editSquareStates(0, 3);
-      String finalizedMove = combineSquareStrings(5, 3);
+      editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+      String finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
       Serial.println(finalizedMove);
     }
-  } else {
-    editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
-      // respond to the communication interface with deduced move
-    String finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
-
-    Serial.println(finalizedMove);
   }
-
-  
 }
 
 void setup() {
@@ -869,6 +845,9 @@ void setup() {
   
   // button pin for user move completion feedback
   pinMode(buttonPin, INPUT_PULLUP);
+
+  // Set built-in LED pin as output
+  pinMode(ledPin, OUTPUT);
   
   // calibrate all X,Y,Z starting positions
   runCalibrationRoutine();
@@ -901,6 +880,7 @@ void setup() {
   
   deduceUserMove();
 }
+
 
 void loop() {
   if (Serial.available() > 0) {

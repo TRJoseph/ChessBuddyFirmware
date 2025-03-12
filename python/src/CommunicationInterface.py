@@ -5,7 +5,7 @@ import subprocess
 import time
 from serial import Serial
 
-arduino_port = '/dev/ttyUSB3'
+arduino_port = '/dev/ttyUSB0'
 baud_rate = 9600
 ser = serial.Serial(arduino_port, baud_rate, timeout=1)
 
