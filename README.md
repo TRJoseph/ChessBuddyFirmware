@@ -11,6 +11,6 @@ This project combines robotics, embedded systems, and AI to create a fully auton
 - **Chess Piece Set** - 3D-printable piece set with a mounting point for a magnet on the bottom of each piece
 
 ### Future Plans
-- Overhaul main control circuit board to leverage a microprocessor, creating an all-in-one solution elimnating the need for the Arduino and Rpi
+- Overhaul main control circuit board to leverage a microprocessor, creating an all-in-one solution eliminating the need for the Arduino and Rpi
 - Redesign portions of the robotic arm to decrease sag and optimize reduction ratios for x & y axis
-- Different piece recognition solution for the chess board itself
+- Full piece recognition solution for the chess board itself
