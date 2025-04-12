@@ -276,6 +276,10 @@ void runCalibrationRoutine() {
   zStepperMotor.setNormalMotorSettings();
   //zStepperMotor.moveTo(3500);
 
+  // THIS LINE IS TEMPORARY, ITS TO ENSURE THE ARM DOES NOT TURN PAST THE LIMIT SWITCH
+  xStepperMotor.moveTo(500);
+  //
+
   xStepperMotor.calibrate(xLimitPin);
   //xStepperMotor.moveTo(1810);
 
