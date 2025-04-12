@@ -625,6 +625,10 @@ void processCommand(String input) {
   int fromSquare = 0, toSquare = 0;
   algebraicToSquares(moveString, fromSquare, toSquare);
 
+  if(commandString == "startNewGame") {
+    startNewGame();
+  }
+
   // usage: moveToSquare <square> <piecetype>
   if(commandString == "moveToSquare") {
     if (moveString.length() > 0) {
@@ -829,6 +833,16 @@ void deduceUserMove() {
   }
 }
 
+// starts a new chess game
+void startNewGame() {
+  gotoParkPosition();
+  
+  instantiateBoardState();
+  whiteToMove = true;
+  
+  deduceUserMove();
+}
+
 void setup() {
   // set electromagnet pin out
   pinMode(electromagnetPin, OUTPUT);
@@ -852,22 +866,7 @@ void setup() {
 
   // Set built-in LED pin as output
   pinMode(ledPin, OUTPUT);
-  
-  // calibrate all X,Y,Z starting positions
-  runCalibrationRoutine();
 
-  xStepperMotor.setNormalMotorSettings();
-  yStepperMotor.setNormalMotorSettings();
-  
-  xStepperMotor.motor.setCurrentPosition(0);
-  yStepperMotor.motor.setCurrentPosition(0);
-  zStepperMotor.motor.setCurrentPosition(0);
-
-  gotoParkPosition();
-  
-  // start serial communication
-  Serial.begin(9600);
-  
   // specifies board electronics pin configurations
   pinMode(latchPin, OUTPUT);
   pinMode(clockEnablePin, OUTPUT);
@@ -879,10 +878,20 @@ void setup() {
   digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
   digitalWrite(latchPin, HIGH);
   
-  instantiateBoardState();
-  whiteToMove = true;
+  // calibrate all X,Y,Z starting positions
+  runCalibrationRoutine();
+
+  xStepperMotor.setNormalMotorSettings();
+  yStepperMotor.setNormalMotorSettings();
   
-  deduceUserMove();
+  xStepperMotor.motor.setCurrentPosition(0);
+  yStepperMotor.motor.setCurrentPosition(0);
+  zStepperMotor.motor.setCurrentPosition(0);
+
+  // start serial communication
+  Serial.begin(9600);
+
+  startNewGame();
 }
 
 
