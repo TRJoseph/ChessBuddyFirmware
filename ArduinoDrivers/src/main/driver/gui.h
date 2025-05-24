@@ -10,6 +10,7 @@ struct NetworkInfo {
     lv_obj_t* container;
 };
 
+
 struct GameInfo {
     char* difficulty;
     char* side_to_play;
@@ -23,11 +24,17 @@ void start_touch_object();
 // screen function definitions
 void setup_top_layer();
 void setup_start_screen();
+void setup_wifi_prompt_screen();
 void setup_settings_screen();
-void switch_to_settings();
+void setup_difficulty_screen();
+void setup_side_select_screen();
+void setup_start_game_screen();
+void setup_active_game_screen();
+
 void switch_to_start();
-void switch_to_wifi_prompt_screen();
-void switch_to_difficulty_screen();
+
+void switch_to_screen(lv_obj_t* new_screen);
+void go_back_screen();
 
 
 void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t * px_map);

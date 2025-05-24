@@ -3,6 +3,7 @@
 #include <Misc_Definitions.h>
 #include "User_Setup.h"
 #include "wlan.h"
+#include <stack>
 
 
 lv_obj_t *start_screen;
@@ -10,11 +11,13 @@ lv_obj_t *wifi_prompt_screen;
 lv_obj_t *settings_screen;
 lv_obj_t *side_select_screen;
 lv_obj_t *difficulty_screen;
+lv_obj_t *time_control_screen;
+lv_obj_t *start_game_screen;
+lv_obj_t *active_game_screen;
 
 struct GameInfo *gameInfo = (struct GameInfo *)malloc(sizeof(struct GameInfo));
 
-// this stores the previous screen for back button functionality
-lv_obj_t *previous_screen;
+std::stack<lv_obj_t*> screen_stack;
 
 lv_obj_t *wifi_icon;
 
@@ -25,7 +28,6 @@ lv_obj_t *wifiNetworkContainer;
 
 lv_obj_t *loading_spinner;
 
-
 static lv_obj_t * keyboard;
 
 
@@ -35,23 +37,56 @@ FT6336U ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN); // Touch controller obj
 /* STYLES */
 static lv_style_t generic_btn_style;
 static lv_style_t nobg_btn_style;
+static lv_style_t alert_btn_style;
 static lv_style_t screen_style;
+static lv_style_t active_timer;
+static lv_style_t inactive_timer;
 
 
+/* Variables for Chess Clock Page (active game page) */
+static int user_total_seconds;
+static int user_minutes;
+static int user_seconds;
+
+lv_timer_t* user_timer;
+
+static int computer_total_seconds;
+static int computer_minutes;
+static int computer_seconds;
+
+lv_timer_t* computer_timer;
+
+
+/* Misc Image Declarations */
 LV_IMAGE_DECLARE(main_logo);
 LV_IMAGE_DECLARE(monitor);
+
+/* Piece Image Declarations */
 LV_IMAGE_DECLARE(black_pawn);
 LV_IMAGE_DECLARE(black_knight);
 LV_IMAGE_DECLARE(black_rook);
 LV_IMAGE_DECLARE(black_queen);
 LV_IMAGE_DECLARE(black_king);
+LV_IMAGE_DECLARE(white_pawn);
+LV_IMAGE_DECLARE(white_knight);
+LV_IMAGE_DECLARE(white_rook);
+LV_IMAGE_DECLARE(white_queen);
+LV_IMAGE_DECLARE(white_king);
+LV_IMAGE_DECLARE(white_king_large);
+LV_IMAGE_DECLARE(black_king_large);
 
+LV_IMAGE_DECLARE(lightning);
+LV_IMAGE_DECLARE(rapid_clock);
+
+
+
+/* Wifi Signal Image Declarations */
 LV_IMAGE_DECLARE(wifi_off);
 LV_IMAGE_DECLARE(wifi_low_strength);
 LV_IMAGE_DECLARE(wifi_med_strength);
 LV_IMAGE_DECLARE(wifi_full_strength);
 
-// wifi animation images
+// wifi animation images array
 static const lv_image_dsc_t * wifi_anim_arr[3] = {
   &wifi_low_strength,
   &wifi_med_strength,
@@ -59,7 +94,7 @@ static const lv_image_dsc_t * wifi_anim_arr[3] = {
 };
 
 
-
+// Sets up global styles
 static void style_init(void) {
     lv_style_init(&generic_btn_style);
     lv_style_set_radius(&generic_btn_style, 20);
@@ -70,6 +105,20 @@ static void style_init(void) {
     lv_style_set_border_width(&nobg_btn_style, 0);
     lv_style_set_shadow_opa(&nobg_btn_style, LV_OPA_TRANSP);
 
+    lv_style_init(&alert_btn_style);
+    lv_style_set_radius(&alert_btn_style, 20);
+    lv_style_set_bg_color(&alert_btn_style, lv_color_hex(0xFF3131));
+    lv_style_set_border_opa(&alert_btn_style, LV_OPA_TRANSP);
+
+
+    lv_style_set_bg_opa(&active_timer, LV_OPA_TRANSP);
+    lv_style_set_border_opa(&active_timer, LV_OPA_TRANSP);
+
+    lv_style_set_bg_color(&inactive_timer, lv_palette_main(LV_PALETTE_GREY));
+    lv_style_set_bg_opa(&inactive_timer, LV_OPA_50);
+    lv_style_set_border_opa(&inactive_timer, LV_OPA_50);
+
+    
 }
 
 void start_touch_object() {
@@ -128,10 +177,12 @@ void start_button_handler(lv_event_t * e)
         LV_LOG_USER("Clicked");
         if(getWifiState() == WIFI_CONNECTED) {
             // go to first setup page
-            switch_to_side_select_screen();
+            switch_to_screen(side_select_screen);
+            //switch_to_side_select_screen();
         } else {
             // go to settings prompt page
-            switch_to_wifi_prompt_screen();
+            switch_to_screen(wifi_prompt_screen);
+            //switch_to_wifi_prompt_screen();
         }
 
 
@@ -147,7 +198,8 @@ void settings_button_handler(lv_event_t * e)
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        switch_to_settings();
+        //switch_to_settings();
+        switch_to_screen(settings_screen);
 
     }
     else if(code == LV_EVENT_VALUE_CHANGED) {
@@ -174,7 +226,7 @@ static void back_event_handler(lv_event_t * e)
     lv_obj_t * settings_menu = (lv_obj_t *)lv_event_get_user_data(e);
     
     if(lv_menu_back_button_is_root(settings_menu, obj)) {
-        lv_screen_load(previous_screen);
+        go_back_screen();
     }
 }
 
@@ -185,7 +237,7 @@ static void default_back_btn_handler(lv_event_t * e)
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        lv_screen_load(previous_screen);
+        go_back_screen();
     }   
 }
 
@@ -232,8 +284,6 @@ static void ta_event_cb(lv_event_t * e)
         const char* input_text = lv_textarea_get_text(ta);
         Serial.println("USER INPUTTED TEXT:");
         Serial.println(input_text);  // Serial output
-
-
 
         // Hide the container and show the loading spinner instead
         if (networkInfo->container) {
@@ -384,6 +434,7 @@ void disconnect_network_submenu_handler(lv_event_t * e) {
     }
 
     disconnectFromWifiNetwork();
+    lv_menu_clear_history(settings_menu);
     lv_menu_set_page(settings_menu, main_page);
     
     updateWifiWidget(getWifiState());
@@ -695,7 +746,7 @@ void setup_screen_template(lv_obj_t * screen, char* title) {
 
     lv_obj_t *title_label = lv_label_create(screen);
     lv_label_set_text(title_label, title);
-    lv_obj_align(title_label, LV_ALIGN_TOP_LEFT, 30, 14);
+    lv_obj_align(title_label, LV_ALIGN_TOP_LEFT, 50, 14);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(title_label, lv_color_hex(0xffffff), 0);
 }
@@ -712,7 +763,8 @@ static void side_select_btn_handler(lv_event_t * e)
         gameInfo->side_to_play = selected_side;
 
         // switch to difficulty screen
-        switch_to_difficulty_screen();
+        //switch_to_difficulty_screen();
+        switch_to_screen(difficulty_screen);
     }
 }
 
@@ -721,7 +773,7 @@ void setup_side_select_screen() {
 
     setup_screen_template(side_select_screen, "Choose Your Side");
 
-    lv_obj_t * parent = lv_obj_create(difficulty_screen);
+    lv_obj_t * parent = lv_obj_create(side_select_screen);
     lv_obj_set_size(parent, 320, 440);
     lv_obj_align(parent, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
@@ -742,15 +794,29 @@ void setup_side_select_screen() {
         &black_king_large
     };
 
-    lv_obj_t * white_cont = lv_btn_create(parent);
-    lv_obj_set_size(white_cont, 300, 60);
-    lv_obj_set_flex_flow(white_cont, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(white_cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_add_event_cb(white_cont, side_select_btn_handler, LV_EVENT_CLICKED, sideLabels[0]);
-    lv_obj_set_style_radius(white_cont, 8, 0);
-    lv_obj_set_style_bg_color(white_cont, lv_color_hex(0x00547B), 0);
-    lv_obj_set_style_pad_all(white_cont, 10, 0);
-    lv_obj_align(title_label, LV_ALIGN_TOP_MID, -10, 14);
+    for(int i = 0; i < 2; i++) {
+        lv_obj_t * cont = lv_btn_create(parent);
+        lv_obj_set_size(cont, 180, 180);
+        lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, (void *)sideLabels[i]);
+        lv_obj_set_style_radius(cont, 8, 0);
+        lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
+        lv_obj_set_style_pad_all(cont, 10, 0);
+
+        lv_obj_t * icon = lv_image_create(cont);
+        lv_img_set_src(icon, sideIcons[i]);
+        lv_image_set_scale(icon, 256);  // REMINDER 256 is normal scale, 512 is double, 128 is half
+
+        // Label (right)
+        lv_obj_t * label = lv_label_create(cont);
+
+        lv_label_set_text(label, sideLabels[i]);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
+        lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
+        lv_obj_set_width(label, 180);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    }
 
 }
 
@@ -768,6 +834,7 @@ static void difficulty_btn_handler(lv_event_t * e)
 
         // SWITCH TO TIME CONTROL SCREEN
         //switch_to_time_control_screen();
+        switch_to_screen(time_control_screen);
     }
 }
 
@@ -810,11 +877,10 @@ void setup_difficulty_screen() {
         lv_obj_set_size(cont, 300, 60);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, difficultyLevels[i]);
+        lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, (void *)difficultyLevels[i]);
         lv_obj_set_style_radius(cont, 8, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
-        lv_obj_align(title_label, LV_ALIGN_TOP_MID, -10, 14);
 
         // Icon (left)
         // lv_obj_t * icon = lv_label_create(cont);
@@ -834,39 +900,340 @@ void setup_difficulty_screen() {
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
         lv_obj_set_width(label, 220);  // Optional width to control wrapping if needed
+        //lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);    
     }
 }
 
-void switch_to_side_select_screen() {
-    previous_screen = lv_screen_active();
-    lv_screen_load(side_select_screen);
+static void time_control_btn_handler(lv_event_t * e)
+{
+    lv_obj_t * obj = lv_event_get_target_obj(e);
+    char * time_control = (char *)lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        LV_LOG_USER("Clicked");
+        gameInfo->time_control = time_control;
+
+        // SWITCH TO START GAME SCREEN
+        //switch_to_time_control_screen();
+        setup_start_game_screen();
+        switch_to_screen(start_game_screen);
+
+       
+        Serial.print("Difficulty: ");
+        Serial.println(gameInfo->difficulty);
+
+        Serial.print("Side to play: ");
+        Serial.println(gameInfo->side_to_play);
+
+        Serial.print("Time control: ");
+        Serial.println(gameInfo->time_control);
+    }
+}
+
+void setup_time_control_screen() {
+    time_control_screen = lv_obj_create(NULL);
+
+    setup_screen_template(time_control_screen, "Choose Time Control");
+
+    lv_obj_t * parent = lv_obj_create(time_control_screen);
+    lv_obj_set_size(parent, 320, 440);
+    lv_obj_align(parent, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(parent, 10, 0);
+
+    lv_obj_set_style_bg_opa(parent, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(parent, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+
+    const char* timeControlLabels[5] = {
+        "5 Min (Blitz)",
+        "10 Min (Rapid)",
+        "30 Min (Rapid)"
+    };
+
+    const lv_image_dsc_t * timeControlIcons[5] {
+        &lightning,
+        &rapid_clock,
+        &rapid_clock,
+    };
+
+    // Loop to create time control containers
+    for(int i = 0; i < 3; i++) {
+        // Create a horizontal container
+        lv_obj_t * cont = lv_btn_create(parent);
+        lv_obj_set_size(cont, 250, 80);
+        lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void *)timeControlLabels[i]);
+        lv_obj_set_style_radius(cont, 40, 0);
+        lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
+        lv_obj_set_style_pad_all(cont, 10, 0);
+
+        // Icon (left)
+        // lv_obj_t * icon = lv_label_create(cont);
+        // lv_label_set_text(icon, difficultyIcons[i]);
+        //lv_obj_set_style_text_font(icon, &lv_font_montserrat_30, 0);
+        // lv_image_set_scale(title_image, 256); 
+        //lv_obj_set_style_text_color(icon, lv_color_hex(0xA3BECC), 0);
+
+        lv_obj_t * icon = lv_image_create(cont);
+        lv_img_set_src(icon, timeControlIcons[i]);
+        lv_image_set_scale(icon, 256);  // REMINDER 256 is normal scale, 512 is double, 128 is half
+
+        // Label (right)
+        lv_obj_t * label = lv_label_create(cont);
+
+        lv_label_set_text(label, timeControlLabels[i]);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
+        lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
+        lv_obj_set_width(label, 200);  // Optional width to control wrapping if needed
+        //lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);    
+    }
+}
+
+void start_game_btn_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        LV_LOG_USER("Clicked");
+
+        setup_active_game_screen();
+        switch_to_screen(active_game_screen);
+    }
+}
+
+void setup_start_game_screen() {
+
+    if(start_game_screen != NULL) {
+        lv_obj_del(start_game_screen); 
+    }
+
+    start_game_screen = lv_obj_create(NULL);
+    setup_screen_template(start_game_screen, "");
+    
+
+    lv_obj_t * start_game_btn = lv_btn_create(start_game_screen);
+    lv_obj_set_size(start_game_btn, 250, 80);
+
+    lv_obj_set_style_radius(start_game_btn, 40, 0);
+    lv_obj_set_style_bg_color(start_game_btn, lv_color_hex(0x008000), 0);
+    lv_obj_set_style_pad_all(start_game_btn, 10, 0);
+    lv_obj_set_style_border_opa(start_game_btn, LV_OPA_TRANSP, 0);
+    lv_obj_align(start_game_btn, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(start_game_btn, start_game_btn_handler, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * start_game_btn_label = lv_label_create(start_game_btn);
+    lv_label_set_text(start_game_btn_label, "Start Game");
+    lv_obj_set_style_text_font(start_game_btn_label, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_color(start_game_btn_label, lv_color_hex(0xffffff), 0);
+    lv_obj_center(start_game_btn_label);
+
+    lv_obj_t * spacer = lv_obj_create(start_game_screen);
+    lv_obj_align(spacer, LV_ALIGN_CENTER, 0, 70);
+    lv_obj_set_size(spacer, 300, 2);
+    lv_obj_set_style_bg_color(spacer, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_border_opa(spacer, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_radius(spacer, 50, 0);
+
+    char buffer[100];
+
+    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User is Playing): %s\nTime Control: %s", gameInfo->difficulty, gameInfo->side_to_play, gameInfo->time_control);
+
+
+    lv_obj_t * game_options_label = lv_label_create(start_game_screen);
+    lv_label_set_text(game_options_label, buffer);
+    lv_obj_set_style_text_font(game_options_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(game_options_label, lv_color_hex(0xffffff), 0);
+    lv_obj_align(game_options_label, LV_ALIGN_CENTER, 0, 120);
+
+}
+
+void clock_timer(lv_timer_t * timer)
+{
+  lv_obj_t * selected_clock_label = (lv_obj_t *) lv_timer_get_user_data(timer);
+
+//   /* Do something with LVGL */
+//   if(something_happened) {
+//     something_happened = false;
+//     lv_button_create(lv_screen_active());
+//   }
+
+    if (user_total_seconds > 0) {
+        user_total_seconds--;
+    }
+
+    user_minutes = user_total_seconds / 60;
+    user_seconds = user_total_seconds % 60;
+
+    //Serial.write("Decrementing...");
+    char clk_buf[10];
+    snprintf(clk_buf, sizeof(clk_buf), "%02d:%02d", user_minutes, user_seconds);
+
+    lv_label_set_text(selected_clock_label, clk_buf);
+
 }
 
 
-void switch_to_difficulty_screen() {
-    previous_screen = lv_screen_active();
-    lv_screen_load(difficulty_screen);
+void end_turn_btn_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    lv_obj_t * top_cont = (lv_obj_t *)lv_event_get_user_data(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        LV_LOG_USER("Clicked");
+        Serial.print("Clicked: ");
+
+        lv_obj_remove_style(top_cont, &inactive_timer, 0);
+        lv_obj_add_style(top_cont, &active_timer, 0);
+
+        // pause the user timer and start the computer's clock
+        lv_timer_pause(user_timer);
+        lv_timer_resume(computer_timer);
+    }
 }
 
-void switch_to_difficulty_screen() {
-    previous_screen = lv_screen_active();
-    lv_screen_load(difficulty_screen);
+void end_game_button_handler(lv_event_t * e) {
+    // TODO: clear the stack if this will switch you back to start screen, else dont
+
+    switch_to_screen(start_screen);
 }
 
-void switch_to_settings() {
-    previous_screen = lv_screen_active();
-    lv_screen_load(settings_screen);
+
+
+// THIS GUI FUNCTION IS EXTRA IMPORTANT AS IT INTERACTS DIRECTLY WITH THE CHESS BOARD ELECTRONICS CODE
+void setup_active_game_screen() {
+    // TODO: maybe need to do some checks here first to ensure the pieces are in the correct starting arrangement, etc, etc
+
+    if(active_game_screen != NULL) {
+        lv_obj_del(active_game_screen); 
+    }
+
+    active_game_screen =  lv_obj_create(NULL);
+
+    lv_obj_set_style_bg_color(active_game_screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(active_game_screen, lv_color_hex(0x0D57A2), 0);
+    lv_obj_set_style_bg_grad_dir(active_game_screen, LV_GRAD_DIR_HOR, 0);
+
+    lv_obj_t * top_cont = lv_obj_create(active_game_screen);
+    lv_obj_align(top_cont, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_size(top_cont, 320, 239);
+    // lv_obj_set_style_bg_opa(top_cont, LV_OPA_TRANSP, 0);
+    // lv_obj_set_style_border_opa(top_cont, LV_OPA_TRANSP, 0);
+    //lv_obj_remove_style(top_cont, NULL, LV_PART_MAIN | LV_STATE_PRESSED);
+
+    // USER IS GOING FIRST THE TOP CONTAINER SHOULD BE DARKENED INITIALLY
+    lv_obj_add_style(top_cont, &inactive_timer, 0);
+
+    lv_obj_t * bottom_button = lv_btn_create(active_game_screen);
+    lv_obj_align(bottom_button, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_size(bottom_button, 320, 239);
+    //lv_obj_remove_style(bottom_button, NULL, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(bottom_button, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(bottom_button, LV_OPA_TRANSP, 0);
+
+
+    // end game button and label
+    lv_obj_t *end_game_btn = lv_button_create(active_game_screen);
+    lv_obj_add_event_cb(end_game_btn, end_game_button_handler, LV_EVENT_CLICKED, NULL);
+    lv_obj_align(end_game_btn, LV_ALIGN_TOP_LEFT, 5, 5);
+    lv_obj_remove_flag(end_game_btn, LV_OBJ_FLAG_PRESS_LOCK);
+    lv_obj_set_size(end_game_btn, 150, 50);
+    lv_obj_add_style(end_game_btn, &alert_btn_style, 0);
+
+    lv_obj_t *end_game_btn_label = lv_label_create(end_game_btn);
+    lv_label_set_text(end_game_btn_label, "END GAME");
+    lv_obj_center(end_game_btn_label);
+    lv_obj_set_style_text_font(end_game_btn_label, &lv_font_montserrat_24, 0);
+
+    lv_obj_t * spacer = lv_obj_create(active_game_screen);
+    lv_obj_align(spacer, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_size(spacer, 315, 2);
+    lv_obj_set_style_bg_color(spacer, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_border_opa(spacer, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_radius(spacer, 50, 0);
+
+    
+    // TODO: convert game info settings into starting time 
+    user_total_seconds = 600;
+    user_minutes = user_total_seconds / 60;
+    user_seconds = user_total_seconds % 60;
+
+    char user_clk_buffer[10];
+    snprintf(user_clk_buffer, sizeof(user_clk_buffer), "%02d:%02d", user_minutes, user_seconds);
+
+
+    lv_obj_t * user_clock = lv_label_create(bottom_button);
+    lv_obj_center(user_clock);
+    lv_label_set_text(user_clock, user_clk_buffer);
+    lv_obj_set_style_text_font(user_clock, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(user_clock, lv_color_hex(0xffffff), 0);
+
+    computer_total_seconds = 600;
+    computer_minutes = computer_total_seconds / 60;
+    computer_seconds = computer_total_seconds % 60;
+
+    char computer_clk_buffer[10];
+    snprintf(computer_clk_buffer, sizeof(computer_clk_buffer), "%02d:%02d", computer_minutes, computer_seconds);
+
+    lv_obj_t * computer_clock = lv_label_create(top_cont);
+    lv_obj_center(computer_clock);
+    lv_label_set_text(computer_clock, computer_clk_buffer);
+    lv_obj_set_style_text_font(computer_clock, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(computer_clock, lv_color_hex(0xffffff), 0);
+
+    // every 1 second, the clock timer decrements for whoever's side it is
+    user_timer = lv_timer_create(clock_timer, 1000, (void *)user_clock);
+    lv_timer_pause(user_timer);
+    computer_timer = lv_timer_create(clock_timer, 1000, (void*)computer_clock);
+    lv_timer_pause(computer_timer);
+
+    lv_obj_add_event_cb(bottom_button, end_turn_btn_handler, LV_EVENT_CLICKED, (void*)top_cont);
+
+
 }
+
+void switch_to_screen(lv_obj_t* new_screen) {
+    lv_obj_t* current = lv_screen_active();
+    screen_stack.push(current); 
+    lv_screen_load(new_screen); 
+}
+
+void go_back_screen() {
+    if (!screen_stack.empty()) {
+        lv_obj_t* prev_screen = screen_stack.top();
+        screen_stack.pop();
+        lv_scr_load(prev_screen);
+    } else {
+        Serial.println("No previous screen in stack.");
+    }
+}
+
+// void switch_to_side_select_screen() {
+//     previous_screen = lv_screen_active();
+//     lv_screen_load(side_select_screen);
+// }
+
+// void switch_to_difficulty_screen() {
+//     previous_screen = lv_screen_active();
+//     lv_screen_load(difficulty_screen);
+// }
+
+// void switch_to_settings() {
+//     previous_screen = lv_screen_active();
+//     lv_screen_load(settings_screen);
+// }
 
 void switch_to_start() {
-    previous_screen = lv_screen_active();
     lv_screen_load(start_screen);
 }
 
-void switch_to_wifi_prompt_screen() {
-    previous_screen = start_screen;
-    lv_screen_load(wifi_prompt_screen);
-}
+// void switch_to_wifi_prompt_screen() {
+//     lv_screen_load(wifi_prompt_screen);
+// }
 
 void initializeGUI() {
     setup_preferences();
@@ -875,4 +1242,7 @@ void initializeGUI() {
     setup_wifi_prompt_screen();
     setup_settings_screen();
     setup_difficulty_screen();
+    setup_side_select_screen();
+    setup_time_control_screen();
+    //setup_start_game_screen();
 }
