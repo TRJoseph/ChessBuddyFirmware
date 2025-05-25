@@ -23,21 +23,28 @@ void setup_preferences() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
 
-  // // open prefrences in RW mode
-  // prefs.begin("WLANPrefs", false);
+  // open prefrences in RW mode
+  prefs.begin("WLANPrefs", false);
 
-  // // check for ssid key
-  // bool IsSsidKey = prefs.isKey("ssid");
-  // bool IsPasswordKey = prefs.iskey("networkPass");
+  // check for ssid key
+  bool IsSsidKey = prefs.isKey("ssid");
+  bool IsPasswordKey = prefs.isKey("networkPass");
 
-  // if(IsSsidKey == false || IsPasswordKey == false) {
+  if(IsSsidKey == false || IsPasswordKey == false) {
+    // dont connect, preferences are missing a key
+    Serial.write("Wireless credential keys not found.\n");
+  } else {
+    // both keys are available, attempt to connect to network
+    Serial.write("Wireless credential keys found, attempting to connect to network...\n");
+    String ssid = prefs.getString("ssid");
+    String pswrd = prefs.getString("networkPass");
+    
 
-  // } else {
-  //   // both keys are available, attempt to connect to network
+    // TODO: maybe do null check on preferences?
+    connectToWifiNetwork(ssid, pswrd);
+  }
+  prefs.end();
 
-  // }
-
-  connectToWifiNetwork("Joseph6", "shinymint951");
 }
 
 
@@ -110,6 +117,15 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("Connected!");
         currentWifiState = WIFI_CONNECTED;
+
+        prefs.begin("WLANPrefs", false);
+        // store wifi credentials in preferences so they persist after reboot
+        prefs.putString("ssid", ssid.c_str());
+        // TODO: LIKELY NEED TO ENCRYPT WIFI CREDENTIALS INSTEAD OF STORING IN PLAIN TEXT
+        prefs.putString("networkPass", password.c_str());
+
+        prefs.end();
+
     } else {
         currentWifiState = WIFI_CONNECTION_FAILED;
         Serial.println("Failed to connect after multiple attempts.");

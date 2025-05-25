@@ -904,10 +904,33 @@ void setup_difficulty_screen() {
     }
 }
 
+// TimeControl map_time_control_labels(char * label) {
+//     if (strcmp(label, "5 Min (Blitz)") == 0) {
+//         return TimeControl::FIVEMINBLITZ;
+//     } else if (strcmp(label, "10 Min (Rapid)") == 0) {
+//         return TimeControl::TENMINRAPID;
+//     } else if (strcmp(label, "30 Min (Rapid)") == 0) {
+//         return TimeControl::THIRTYMINRAPID;
+//     }
+//     return TimeControl::TENMINRAPID;
+// }
+
+char * get_time_control_label(TimeControl time_control_value) {
+    switch(time_control_value) {
+        case(TimeControl::FIVEMINBLITZ):
+            return "5 Min (Blitz)";
+        case(TimeControl::TENMINRAPID):
+            return "10 Min (Rapid)";
+        case (TimeControl::THIRTYMINRAPID):
+            return "30 Min (Rapid)";
+    }
+}
+
+
 static void time_control_btn_handler(lv_event_t * e)
 {
     lv_obj_t * obj = lv_event_get_target_obj(e);
-    char * time_control = (char *)lv_event_get_user_data(e);
+    TimeControl time_control = *(TimeControl *)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
@@ -920,16 +943,18 @@ static void time_control_btn_handler(lv_event_t * e)
         switch_to_screen(start_game_screen);
 
        
-        Serial.print("Difficulty: ");
-        Serial.println(gameInfo->difficulty);
+        // Serial.print("Difficulty: ");
+        // Serial.println(gameInfo->difficulty);
 
-        Serial.print("Side to play: ");
-        Serial.println(gameInfo->side_to_play);
+        // Serial.print("Side to play: ");
+        // Serial.println(gameInfo->side_to_play);
 
-        Serial.print("Time control: ");
-        Serial.println(gameInfo->time_control);
+        // Serial.print("Time control: ");
+        // Serial.println(map_time_control_labels(gameInfo->time_control));
     }
 }
+
+
 
 void setup_time_control_screen() {
     time_control_screen = lv_obj_create(NULL);
@@ -947,13 +972,13 @@ void setup_time_control_screen() {
     lv_obj_set_style_border_opa(parent, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    const char* timeControlLabels[5] = {
-        "5 Min (Blitz)",
-        "10 Min (Rapid)",
-        "30 Min (Rapid)"
+    static TimeControl timeControls[3] = {
+        FIVEMINBLITZ,
+        TENMINRAPID,
+        THIRTYMINRAPID
     };
 
-    const lv_image_dsc_t * timeControlIcons[5] {
+    const lv_image_dsc_t * timeControlIcons[3] {
         &lightning,
         &rapid_clock,
         &rapid_clock,
@@ -966,7 +991,7 @@ void setup_time_control_screen() {
         lv_obj_set_size(cont, 250, 80);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void *)timeControlLabels[i]);
+        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void *)&timeControls[i]);
         lv_obj_set_style_radius(cont, 40, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
@@ -985,7 +1010,7 @@ void setup_time_control_screen() {
         // Label (right)
         lv_obj_t * label = lv_label_create(cont);
 
-        lv_label_set_text(label, timeControlLabels[i]);
+        lv_label_set_text(label, get_time_control_label(timeControls[i]));
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
         lv_obj_set_width(label, 200);  // Optional width to control wrapping if needed
@@ -1040,7 +1065,7 @@ void setup_start_game_screen() {
 
     char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User is Playing): %s\nTime Control: %s", gameInfo->difficulty, gameInfo->side_to_play, gameInfo->time_control);
+    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User is Playing): %s\nTime Control: %s", gameInfo->difficulty, gameInfo->side_to_play, get_time_control_label(gameInfo->time_control));
 
 
     lv_obj_t * game_options_label = lv_label_create(start_game_screen);
@@ -1055,11 +1080,6 @@ void clock_timer(lv_timer_t * timer)
 {
   lv_obj_t * selected_clock_label = (lv_obj_t *) lv_timer_get_user_data(timer);
 
-//   /* Do something with LVGL */
-//   if(something_happened) {
-//     something_happened = false;
-//     lv_button_create(lv_screen_active());
-//   }
 
     if (user_total_seconds > 0) {
         user_total_seconds--;
@@ -1076,19 +1096,29 @@ void clock_timer(lv_timer_t * timer)
 
 }
 
+typedef struct {
+    lv_obj_t* user_side_container;
+    lv_obj_t* computer_side_container;
+} SidesContainer;
+
+
 
 void end_turn_btn_handler(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
 
-    lv_obj_t * top_cont = (lv_obj_t *)lv_event_get_user_data(e);
+    SidesContainer * sides = (SidesContainer *)lv_event_get_user_data(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
         Serial.print("Clicked: ");
 
-        lv_obj_remove_style(top_cont, &inactive_timer, 0);
-        lv_obj_add_style(top_cont, &active_timer, 0);
+        lv_obj_remove_style(sides->computer_side_container, &inactive_timer, LV_PART_MAIN);
+        lv_obj_add_style(sides->computer_side_container, &active_timer, LV_PART_MAIN);
+
+        lv_obj_add_style(sides->user_side_container, &inactive_timer, LV_PART_MAIN);
+        lv_obj_remove_style(sides->user_side_container, &active_timer, LV_PART_MAIN);
+
 
         // pause the user timer and start the computer's clock
         lv_timer_pause(user_timer);
@@ -1102,17 +1132,32 @@ void end_game_button_handler(lv_event_t * e) {
     switch_to_screen(start_screen);
 }
 
+void reset_active_game_state() {
+    if(active_game_screen != NULL) {
+        lv_obj_del(active_game_screen); 
+        active_game_screen = NULL;
+    }
+
+    if (user_timer != NULL) {
+        lv_timer_del(user_timer);
+        user_timer = NULL;
+    }
+    if (computer_timer != NULL) {
+        lv_timer_del(computer_timer);
+        computer_timer = NULL;
+    }
+}
+
+
 
 
 // THIS GUI FUNCTION IS EXTRA IMPORTANT AS IT INTERACTS DIRECTLY WITH THE CHESS BOARD ELECTRONICS CODE
 void setup_active_game_screen() {
+
     // TODO: maybe need to do some checks here first to ensure the pieces are in the correct starting arrangement, etc, etc
+    reset_active_game_state();
 
-    if(active_game_screen != NULL) {
-        lv_obj_del(active_game_screen); 
-    }
-
-    active_game_screen =  lv_obj_create(NULL);
+    active_game_screen = lv_obj_create(NULL);
 
     lv_obj_set_style_bg_color(active_game_screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_color(active_game_screen, lv_color_hex(0x0D57A2), 0);
@@ -1125,16 +1170,16 @@ void setup_active_game_screen() {
     // lv_obj_set_style_border_opa(top_cont, LV_OPA_TRANSP, 0);
     //lv_obj_remove_style(top_cont, NULL, LV_PART_MAIN | LV_STATE_PRESSED);
 
-    // USER IS GOING FIRST THE TOP CONTAINER SHOULD BE DARKENED INITIALLY
-    lv_obj_add_style(top_cont, &inactive_timer, 0);
+    // USER IS GOING FIRST THE TOP CONTAINER SHOULD BE DARKENED INITIALLY (IF THE USER IS PLAYING WHITE)
+    lv_obj_add_style(top_cont, &inactive_timer, LV_PART_MAIN);
 
     lv_obj_t * bottom_button = lv_btn_create(active_game_screen);
     lv_obj_align(bottom_button, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_size(bottom_button, 320, 239);
     //lv_obj_remove_style(bottom_button, NULL, LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(bottom_button, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(bottom_button, LV_OPA_TRANSP, 0);
 
+    // THE ACTIVE TIMER STYLE IS SET INITIALLY IF THE USER IS PLAYING WHITE
+    lv_obj_add_style(bottom_button, &active_timer, LV_PART_MAIN);
 
     // end game button and label
     lv_obj_t *end_game_btn = lv_button_create(active_game_screen);
@@ -1157,8 +1202,7 @@ void setup_active_game_screen() {
     lv_obj_set_style_radius(spacer, 50, 0);
 
     
-    // TODO: convert game info settings into starting time 
-    user_total_seconds = 600;
+    user_total_seconds = gameInfo->time_control;
     user_minutes = user_total_seconds / 60;
     user_seconds = user_total_seconds % 60;
 
@@ -1172,7 +1216,7 @@ void setup_active_game_screen() {
     lv_obj_set_style_text_font(user_clock, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(user_clock, lv_color_hex(0xffffff), 0);
 
-    computer_total_seconds = 600;
+    computer_total_seconds = gameInfo->time_control;
     computer_minutes = computer_total_seconds / 60;
     computer_seconds = computer_total_seconds % 60;
 
@@ -1191,9 +1235,11 @@ void setup_active_game_screen() {
     computer_timer = lv_timer_create(clock_timer, 1000, (void*)computer_clock);
     lv_timer_pause(computer_timer);
 
-    lv_obj_add_event_cb(bottom_button, end_turn_btn_handler, LV_EVENT_CLICKED, (void*)top_cont);
+    static SidesContainer sides_container;
+    sides_container.user_side_container = bottom_button;
+    sides_container.computer_side_container = top_cont;
 
-
+    lv_obj_add_event_cb(bottom_button, end_turn_btn_handler, LV_EVENT_CLICKED, (void*)&sides_container);
 }
 
 void switch_to_screen(lv_obj_t* new_screen) {

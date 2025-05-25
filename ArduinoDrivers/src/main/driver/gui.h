@@ -10,12 +10,26 @@ struct NetworkInfo {
     lv_obj_t* container;
 };
 
+// In seconds
+enum TimeControl {
+    FIVEMINBLITZ = 300,
+    TENMINRAPID = 600,
+    THIRTYMINRAPID = 1800
+};
+
 
 struct GameInfo {
     char* difficulty;
     char* side_to_play;
-    char* time_control;
+    TimeControl time_control;
 };
+
+
+// struct GameInfo {
+//     char* difficulty;
+//     char* side_to_play;
+//     char* time_control;
+// };
 
 void initializeGUI();
 
@@ -35,7 +49,6 @@ void switch_to_start();
 
 void switch_to_screen(lv_obj_t* new_screen);
 void go_back_screen();
-
 
 void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t * px_map);
 void my_touch_read(lv_indev_t * indev, lv_indev_data_t * data);
