@@ -83,41 +83,12 @@ static int computer_seconds;
 
 lv_timer_t* computer_timer;
 
-
-// /* Misc Image Declarations */
-// LV_IMAGE_DECLARE(main_logo);
-// LV_IMAGE_DECLARE(monitor);
-
-// /* Piece Image Declarations */
-// LV_IMAGE_DECLARE(black_pawn);
-// LV_IMAGE_DECLARE(black_knight);
-// LV_IMAGE_DECLARE(black_rook);
-// LV_IMAGE_DECLARE(black_queen);
-// LV_IMAGE_DECLARE(black_king);
-// LV_IMAGE_DECLARE(white_pawn);
-// LV_IMAGE_DECLARE(white_knight);
-// LV_IMAGE_DECLARE(white_rook);
-// LV_IMAGE_DECLARE(white_queen);
-// LV_IMAGE_DECLARE(white_king);
-// LV_IMAGE_DECLARE(white_king_large);
-// LV_IMAGE_DECLARE(black_king_large);
-
-// LV_IMAGE_DECLARE(lightning);
-// LV_IMAGE_DECLARE(rapid_clock);
-
-// /* Wifi Signal Image Declarations */
-// LV_IMAGE_DECLARE(wifi_off);
-// LV_IMAGE_DECLARE(wifi_low_strength);
-// LV_IMAGE_DECLARE(wifi_med_strength);
-// LV_IMAGE_DECLARE(wifi_full_strength);
-
 // wifi animation images array
 static const lv_image_dsc_t * wifi_anim_arr[3] = {
   &wifi_low_strength,
   &wifi_med_strength,
   &wifi_full_strength
 };
-
 
 // Sets up global styles
 static void style_init(void) {
@@ -1122,13 +1093,6 @@ void clock_timer(lv_timer_t * timer)
 
 }
 
-typedef struct {
-    lv_obj_t* user_side_container;
-    lv_obj_t* computer_side_container;
-} SidesContainer;
-
-static SidesContainer sides_container;
-
 
 void end_turn_btn_handler(lv_event_t * e)
 {
@@ -1153,6 +1117,20 @@ void end_turn_btn_handler(lv_event_t * e)
     }
 }
 
+// this is called outside to update the UI when the robot is finished executing its move
+void end_engine_turn_handler() {
+    lv_obj_remove_style(sides_container.computer_side_container, &inactive_timer, LV_PART_MAIN);
+    lv_obj_add_style(sides_container.computer_side_container, &active_timer, LV_PART_MAIN);
+
+    lv_obj_add_style(sides_container.user_side_container, &inactive_timer, LV_PART_MAIN);
+    lv_obj_remove_style(sides_container.user_side_container, &active_timer, LV_PART_MAIN);
+
+
+    // pause the user timer and start the computer's clock
+    lv_timer_pause(computer_timer);
+    lv_timer_resume(user_timer);
+}
+
 void end_game_button_handler(lv_event_t * e) {
     // TODO: clear the stack if this will switch you back to start screen, else dont
 
@@ -1174,7 +1152,6 @@ void reset_active_game_state() {
         computer_timer = NULL;
     }
 }
-
 
 
 

@@ -23,6 +23,14 @@ struct GameInfo {
     TimeControl time_control;
 };
 
+// this struct holds each sides area container on the chess clock active game menu
+typedef struct {
+    lv_obj_t* user_side_container;
+    lv_obj_t* computer_side_container;
+} SidesContainer;
+
+static SidesContainer sides_container;
+
 
 void initializeGUI();
 
