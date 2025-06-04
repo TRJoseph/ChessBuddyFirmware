@@ -1119,11 +1119,11 @@ void end_turn_btn_handler(lv_event_t * e)
 
 // this is called outside to update the UI when the robot is finished executing its move
 void end_engine_turn_handler() {
-    lv_obj_remove_style(sides_container.computer_side_container, &inactive_timer, LV_PART_MAIN);
-    lv_obj_add_style(sides_container.computer_side_container, &active_timer, LV_PART_MAIN);
+    lv_obj_remove_style(sides_container.computer_side_container, &active_timer, LV_PART_MAIN);
+    lv_obj_add_style(sides_container.computer_side_container, &inactive_timer, LV_PART_MAIN);
 
-    lv_obj_add_style(sides_container.user_side_container, &inactive_timer, LV_PART_MAIN);
-    lv_obj_remove_style(sides_container.user_side_container, &active_timer, LV_PART_MAIN);
+    lv_obj_add_style(sides_container.user_side_container, &active_timer, LV_PART_MAIN);
+    lv_obj_remove_style(sides_container.user_side_container, &inactive_timer, LV_PART_MAIN);
 
 
     // pause the user timer and start the computer's clock
