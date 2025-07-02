@@ -58,11 +58,16 @@ void setup()
 
     /* Starts the ChessBuddy GUI */
     initializeGUI();
-    switch_to_start();
-    /* */
 
+    /* Initializes the board and arm setup configuration*/
+    setupBoard();
+
+    /* Changes to the start screen */
+    switch_to_start();
+
+    
+    /* */
     Serial.println( "Setup done" );
-    //lv_demo_benchmark();
 }
 
 void loop()

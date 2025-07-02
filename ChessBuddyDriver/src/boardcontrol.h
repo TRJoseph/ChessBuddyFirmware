@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+// holding current status of calibration
+extern bool calibrationStatus;
+
 enum class SpecialMove {
     None,
     Castling, 

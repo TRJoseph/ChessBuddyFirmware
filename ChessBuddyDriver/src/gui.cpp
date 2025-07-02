@@ -121,7 +121,8 @@ static void style_init(void) {
     lv_style_init(&calibration_container);
     lv_style_set_border_color(&calibration_container, lv_color_black());
     lv_style_set_border_width(&calibration_container, 2);
-    lv_style_set_pad_all(&calibration_container, 10);
+    lv_style_set_border_opa(&calibration_container, LV_OPA_20);
+    lv_style_set_pad_top(&calibration_container, 10);
     lv_style_set_bg_color(&calibration_container, lv_color_hex(0xffffff));
     lv_style_set_bg_opa(&calibration_container, LV_OPA_COVER);
 
@@ -651,25 +652,84 @@ void setup_wifi_prompt_screen() {
     lv_obj_set_style_text_font(settings_btn_icon, &lv_font_montserrat_42, 0);
 }
 
+static void execute_calibration_routine_handler_settings(lv_event_t * e)
+{
+    executeCalibrationData* calibrationData = (executeCalibrationData*) lv_event_get_user_data(e);
+    runCalibrationRoutine();
+
+    lv_obj_del(lv_obj_get_parent(calibrationData->message_box));
+    lv_label_set_text(calibrationData->status_icon, LV_SYMBOL_OK);
+    lv_obj_set_style_text_color(calibrationData->status_icon, lv_color_hex(0x00C853), LV_PART_MAIN);
+    free(calibrationData);
+}
+
+static void run_calibration_handler_settings(lv_event_t * e)
+{
+    lv_obj_t * obj = (lv_obj_t *) lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+
+    lv_obj_t * mbox1 = lv_msgbox_create(NULL);
+
+    // struct to hold message box reference and to hold status icon for updating
+    executeCalibrationData* calibrationData = (executeCalibrationData*) malloc(sizeof(executeCalibrationData));
+    calibrationData->status_icon = obj;
+    calibrationData->message_box = mbox1;
+
+    lv_msgbox_add_title(mbox1, "Calibration");
+
+    lv_msgbox_add_text(mbox1, "Please ensure any nearby objects are out of the way to give the arm clearance!");
+    lv_msgbox_add_close_button(mbox1);
+
+    lv_obj_t * btn;
+    btn = lv_msgbox_add_footer_button(mbox1, "Run");
+    lv_obj_add_event_cb(btn, execute_calibration_routine_handler_settings, LV_EVENT_CLICKED, calibrationData);
+    return;
+}
+
 void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
 
     lv_obj_t* calibration_cont = lv_obj_create(arm_mechanics_page);
-    lv_obj_set_size(calibration_cont, 300, 120);
+    lv_obj_set_size(calibration_cont, 300, 150);
     lv_obj_center(calibration_cont);
     lv_obj_set_flex_flow(calibration_cont, LV_FLEX_FLOW_COLUMN);
     lv_obj_add_style(calibration_cont, &calibration_container, LV_PART_MAIN);
 
-    lv_obj_t* calibration_btn = lv_btn_create(arm_mechanics_page);
-    lv_obj_set_size(calibration_btn, 200, 80);
-    lv_obj_align(calibration_btn, LV_ALIGN_TOP_MID, 0, 80);
-    lv_obj_add_style(calibration_btn, &generic_btn_style, 0);
-    //lv_obj_add_event_cb(settings_btn, settings_button_handler_special, LV_EVENT_ALL, NULL);
+    lv_obj_t* status_row = lv_obj_create(calibration_cont);
+    lv_obj_set_size(status_row, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_left(status_row, 10, 0);
+    lv_obj_set_flex_flow(status_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(status_row, 10, 0);
+    lv_obj_set_style_border_width(status_row, 0, 0);
+    lv_obj_set_style_bg_opa(status_row, LV_OPA_TRANSP, 0);
 
-    lv_obj_t* calibration_btn_icon = lv_label_create(calibration_btn);
-    lv_label_set_text(calibration_btn_icon, "Run Calibration Routine");
-    lv_obj_center(calibration_btn_icon);
-    lv_obj_set_style_text_font(calibration_btn_icon, &lv_font_montserrat_24, 0);
+    // This shows current robotic arm calibration status
+    lv_obj_t* status_label = lv_label_create(status_row);
+    lv_label_set_text(status_label, "Calibration Status:");
+    lv_obj_set_style_text_font(status_label, &lv_font_montserrat_20, 0);
 
+    // Status icon depending on whether the arm has been actively calibrated 
+    lv_obj_t* status_icon = lv_label_create(status_row);
+    
+    if(calibrationStatus) {
+        lv_label_set_text(status_icon, LV_SYMBOL_OK);
+         lv_obj_set_style_text_color(status_icon, lv_color_hex(0x00C853), LV_PART_MAIN);
+    } else {
+        lv_label_set_text(status_icon, LV_SYMBOL_CLOSE);
+        lv_obj_set_style_text_color(status_icon, lv_color_hex(0xFF474C), LV_PART_MAIN);
+    }
+
+    lv_obj_set_style_text_font(status_icon, &lv_font_montserrat_20, 0);
+
+    // calibration button
+    lv_obj_t* calib_btn = lv_btn_create(calibration_cont);
+    lv_obj_set_size(calib_btn, LV_PCT(100), 50);
+    lv_obj_add_style(calib_btn, &generic_btn_style, LV_PART_MAIN);
+    lv_obj_add_event_cb(calib_btn, run_calibration_handler_settings, LV_EVENT_CLICKED, status_icon);
+
+    lv_obj_t* calib_btn_label = lv_label_create(calib_btn);
+    lv_label_set_text(calib_btn_label, "Run Calibration Routine");
+    lv_obj_center(calib_btn_label);
+    lv_obj_set_style_text_font(calib_btn_label, &lv_font_montserrat_20, 0);
 }
 
 void setup_settings_screen() {
@@ -1001,8 +1061,6 @@ static void time_control_btn_handler(lv_event_t * e)
     }
 }
 
-
-
 void setup_time_control_screen() {
     time_control_screen = lv_obj_create(NULL);
 
@@ -1065,6 +1123,30 @@ void setup_time_control_screen() {
     }
 }
 
+static void execute_calibration_routine_handler(lv_event_t * e)
+{
+    lv_obj_t* message_box = (lv_obj_t*) lv_event_get_user_data(e);
+    
+    runCalibrationRoutine();
+
+    lv_obj_del(lv_obj_get_parent(message_box));
+}
+
+static void calibration_handler_popup()
+{
+    lv_obj_t * mbox1 = lv_msgbox_create(NULL);
+
+    lv_msgbox_add_title(mbox1, "Calibration");
+
+    lv_msgbox_add_text(mbox1, "You must calibrate before playing a game! Please ensure any nearby objects are out of the way to give the arm clearance!");
+    lv_msgbox_add_close_button(mbox1);
+
+    lv_obj_t * btn;
+    btn = lv_msgbox_add_footer_button(mbox1, "Run");
+    lv_obj_add_event_cb(btn, execute_calibration_routine_handler, LV_EVENT_CLICKED, mbox1);
+    return;
+}
+
 void start_game_btn_handler(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
@@ -1072,8 +1154,13 @@ void start_game_btn_handler(lv_event_t * e)
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
 
-        setup_active_game_screen();
-        switch_to_screen(active_game_screen);
+        // if arm is calibrated, proceed to game start, else pop up message
+        if(calibrationStatus == true) {
+            setup_active_game_screen();
+            switch_to_screen(active_game_screen);
+        } else {
+            calibration_handler_popup();
+        }
     }
 }
 
@@ -1112,7 +1199,7 @@ void setup_start_game_screen() {
 
     char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User is Playing): %s\nTime Control: %s", gameInfo->difficulty, gameInfo->side_to_play, get_time_control_label(gameInfo->time_control));
+    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User): %s\nTime Control: %s", gameInfo->difficulty, gameInfo->side_to_play, get_time_control_label(gameInfo->time_control));
 
 
     lv_obj_t * game_options_label = lv_label_create(start_game_screen);
@@ -1205,7 +1292,9 @@ void set_active_game_state() {
         computer_timer = NULL;
     }
 
-    setupBoard();
+    // TODO: DO CONDITIONAL CHECK HERE TO CHECK IF ARM IS CALIBRATED FIRST, IF SO, PROCEED TO GAME STATE, IF NOT, PROMPT USER TO CALIBRATE
+    // runCalibrationRoutine();
+
 }
 
 

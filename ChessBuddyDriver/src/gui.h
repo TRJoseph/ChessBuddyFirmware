@@ -25,6 +25,11 @@ struct GameInfo {
     TimeControl time_control;
 };
 
+struct executeCalibrationData {
+    lv_obj_t * status_icon;
+    lv_obj_t * message_box;
+};
+
 // this struct holds each sides area container on the chess clock active game menu
 typedef struct {
     lv_obj_t* user_side_container;

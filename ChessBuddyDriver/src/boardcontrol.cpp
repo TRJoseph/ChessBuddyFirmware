@@ -100,6 +100,8 @@ KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::King, -650} // king is good
 };
 
+bool calibrationStatus = false;
+
 
 /* THINGS TO NOTE:
 The X stepper motor is referring to the base joint rotation. The Y stepper motor is referring to the arm segment joint rotation.
@@ -166,14 +168,16 @@ StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 5, 10000, baseS
 //AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
 //AccelStepper zStepper(AccelStepper::DRIVER, zStepPin, zDirPin);
 
+  
+// calibrate all X,Y,Z starting positions
 void runCalibrationRoutine() {
 
   // ensure arm clearance for y axis calibration routine
-  zStepperMotor.setNormalMotorSettings();
+  xStepperMotor.setNormalMotorSettings();
   //zStepperMotor.moveTo(3500);
 
   // THIS LINE IS TEMPORARY, ITS TO ENSURE THE ARM DOES NOT TURN PAST THE LIMIT SWITCH
-  //xStepperMotor.moveTo(500);
+  xStepperMotor.moveTo(500);
   //
 
   xStepperMotor.calibrate(xLimitPin);
@@ -192,6 +196,9 @@ void runCalibrationRoutine() {
   xStepperMotor.motor.setCurrentPosition(0);
   yStepperMotor.motor.setCurrentPosition(0);
   zStepperMotor.motor.setCurrentPosition(0);
+
+  calibrationStatus = true;
+  gotoParkPosition();
 }
 
 void gotoParkPosition() {
@@ -780,12 +787,6 @@ void setupBoard() {
   
   digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
   digitalWrite(latchPin, HIGH);
-  
-  // calibrate all X,Y,Z starting positions
-  runCalibrationRoutine();
-
-  gotoParkPosition();
- 
 }
 
 
