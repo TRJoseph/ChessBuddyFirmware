@@ -53,6 +53,9 @@ void setup()
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER); /*Touchpad should have POINTER type*/
     lv_indev_set_read_cb(indev, my_touch_read);
 
+    // setup wifi preferences and credentials
+    setup_preferences();
+
     /* Starts the ChessBuddy GUI */
     initializeGUI();
     switch_to_start();

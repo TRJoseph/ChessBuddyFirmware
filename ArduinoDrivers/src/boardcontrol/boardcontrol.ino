@@ -8,10 +8,10 @@
 
 
 // new with arduino nano
-const int latchPin = 7;      // Pin to trigger the latch
-const int clockEnablePin = 9; // Clock enable pin
-const int dataIn = 6;        // Serial data input pin
-const int clockPin = 8;      // Shift clock pin
+const int latchPin = 1;      // Pin to trigger the latch
+const int clockEnablePin = 3; // Clock enable pin
+const int dataIn = 47;        // Serial data input pin
+const int clockPin = 2;      // Shift clock pin
 
 // Number of shift registers in the chain
 const int numRegisters = 8; // 8 shift registers

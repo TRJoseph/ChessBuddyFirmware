@@ -9,7 +9,6 @@
 
 Preferences prefs;
 
-WifiScanState currentWifiState = WIFI_IDLE;
 struct Network* networksList = NULL;
 int networkCount = 0;
 unsigned long scanStartTime = 0;
@@ -48,25 +47,100 @@ void setup_preferences() {
 }
 
 
+//Optional helper to convert encryption types to human-readable string
+// String getEncryptionType(wifi_auth_mode_t type) {
+//   switch (type) {
+//     case WIFI_AUTH_OPEN: return "Open";
+//     case WIFI_AUTH_WEP: return "WEP";
+//     case WIFI_AUTH_WPA_PSK: return "WPA-PSK";
+//     case WIFI_AUTH_WPA2_PSK: return "WPA2-PSK";
+//     case WIFI_AUTH_WPA_WPA2_PSK: return "WPA/WPA2-PSK";
+//     case WIFI_AUTH_WPA2_ENTERPRISE: return "WPA2-Enterprise";
+//     case WIFI_AUTH_WPA3_PSK: return "WPA3-PSK";
+//     case WIFI_AUTH_WPA2_WPA3_PSK: return "WPA2/WPA3-PSK";
+//     default: return "Unknown";
+//   }
+// }
+
+// void setup_preferences() {
+//   Serial.begin(115200);
+//   delay(1000); // Wait for Serial to initialize
+
+//   WiFi.mode(WIFI_STA);  // Set WiFi to Station mode
+//   WiFi.disconnect();    // Disconnect from any previous connections
+//   delay(100);
+
+//   Serial.println("\n🔍 Scanning for WiFi networks...");
+
+//   int networksFound = WiFi.scanNetworks();
+
+//   if (networksFound == 0) {
+//     Serial.println("❌ No networks found.");
+//   } else {
+//     Serial.printf("✅ %d network(s) found:\n", networksFound);
+//     for (int i = 0; i < networksFound; ++i) {
+//       // Print SSID, RSSI (signal strength), and encryption type
+//       Serial.printf("%d: %s (%ddBm) Encryption: %s\n", i + 1,
+//                     WiFi.SSID(i).c_str(),
+//                     WiFi.RSSI(i),
+//                     getEncryptionType(WiFi.encryptionType(i)).c_str());
+//       delay(10);
+//     }
+//   }
+//   Serial.println("📡 Scan complete.\n");
+// }
+
+void debugCurrentWifiStatus() {
+
+
+  wl_status_t wifiStatus = WiFi.status();
+  Serial.print("Current WiFi status (int): ");
+  Serial.println((int)wifiStatus);  // Print numeric value
+
+  Serial.print("Current WiFi status (label): ");
+  switch (wifiStatus) {
+    case WL_IDLE_STATUS:
+      Serial.println("Idle");
+      break;
+    case WL_NO_SSID_AVAIL:
+      Serial.println("No SSID Available");
+      break;
+    case WL_SCAN_COMPLETED:
+      Serial.println("Scan Completed");
+      break;
+    case WL_CONNECTED:
+      Serial.println("Connected");
+      break;
+    case WL_CONNECT_FAILED:
+      Serial.println("Connection Failed");
+      break;
+    case WL_CONNECTION_LOST:
+      Serial.println("Connection Lost");
+      break;
+    case WL_DISCONNECTED:
+      Serial.println("Disconnected");
+      break;
+    default:
+      Serial.println("");
+      Serial.println("Unknown");
+      break;
+  }
+}
+
+
 void check_wifi_status_timer_cb(lv_timer_t * timer) {
 
-
     // check if wifi is connected
-    processWifiState();
-
-    // if wifi is connected stop the timer
-    if(WiFi.status() == WL_CONNECTED || 
-        currentWifiState == WIFI_CONNECTION_FAILED) {
-        lv_timer_del(timer);
-    }
+    processWifiState(timer);
 }
 
 
 void connectToWifiNetwork(const String& ssid, const String& password) {
-  if (currentWifiState == WIFI_IDLE || 
-      currentWifiState == WIFI_CONNECTION_FAILED) {
-    
-    currentWifiState = WIFI_CONNECTING;
+  wl_status_t wifiStatus = WiFi.status();
+  debugCurrentWifiStatus();
+  if (wifiStatus == WL_IDLE_STATUS || 
+      wifiStatus == WL_CONNECT_FAILED || WL_DISCONNECTED) {
+
     scanStartTime = millis(); // Reuse for connection timeout
     attempt = 1;
     
@@ -89,8 +163,6 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
 
     WiFi.begin(ssid.c_str(), password.c_str());
     attempt = 1;
-    currentWifiState = WIFI_CONNECTING;
-
 
     while (WiFi.status() != WL_CONNECTED && attempt < 10) {
         delay(500);
@@ -99,13 +171,11 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
         
         if (status == WL_CONNECT_FAILED) {
             Serial.println("Connection failed (wrong password or AP unreachable).");
-            currentWifiState = WIFI_CONNECTION_FAILED;
             break;
         }
         
         if (status == WL_NO_SSID_AVAIL) {
             Serial.println("SSID not found.");
-            currentWifiState = WIFI_CONNECTION_FAILED;
             break;
         }
 
@@ -116,7 +186,6 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
 
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("Connected!");
-        currentWifiState = WIFI_CONNECTED;
 
         prefs.begin("WLANPrefs", false);
         // store wifi credentials in preferences so they persist after reboot
@@ -127,7 +196,6 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
         prefs.end();
 
     } else {
-        currentWifiState = WIFI_CONNECTION_FAILED;
         Serial.println("Failed to connect after multiple attempts.");
     }
 
@@ -136,17 +204,10 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
 
 void disconnectFromWifiNetwork() {
   Serial.printf("Disconnecting from %s...\n", WiFi.SSID().c_str());
-  WiFi.disconnect(true);
-  setWifiState(WIFI_IDLE);
-}
-
-
-void setWifiState(WifiScanState state) {
-    currentWifiState = state;
-}
-
-WifiScanState getWifiState() {
-    return currentWifiState;
+  WiFi.disconnect();
+  delay(200);
+  debugCurrentWifiStatus();
+  updateWifiWidget(WL_DISCONNECTED);
 }
 
 int getWifiSignalStrength() {
@@ -159,10 +220,13 @@ void freeNetworks(struct Network* networks) {
     }
 }
 
-void processWifiState() {
+void processWifiState(lv_timer_t * timer) {
+  wl_status_t wifiStatus = WiFi.status();
 
-  switch (currentWifiState) {
-    case WIFI_SCANNING: {
+  debugCurrentWifiStatus();
+
+  switch (wifiStatus) {
+    case WL_DISCONNECTED: {
 
       int scanResult = WiFi.scanComplete();
 
@@ -214,74 +278,71 @@ void processWifiState() {
             delay(10);
           }
         }
-        currentWifiState = WIFI_IDLE;
 
         // TODO: update UI for menu
         updateWifiNetworkList(networkCount, networksList);
         WiFi.scanDelete();
+
+        // stop the timer
+        lv_timer_del(timer);
+        
       } else if (scanResult == WIFI_SCAN_FAILED) {
         // Scan failed
-        currentWifiState = WIFI_CONNECTION_FAILED;
         Serial.println("WiFi scan failed");
-        
-        updateWifiWidget(WIFI_CONNECTION_FAILED);
+             
+        // Update UI to show failed connection
+        updateWifiWidget(WL_CONNECT_FAILED);
+
+        lv_timer_del(timer);
       }
-      else if (millis() - scanStartTime > 10000) {
-        // Timeout after 10 seconds
+      else if (millis() - scanStartTime > 15000) {
+        // Timeout after 15 seconds
         WiFi.scanDelete();
-        currentWifiState = WIFI_CONNECTION_FAILED;
         Serial.println("WiFi scan timeout");
         
         // Update UI to show timeout
-        updateWifiWidget(WIFI_CONNECTION_FAILED);
+        updateWifiWidget(WL_CONNECT_FAILED);
+
+        lv_timer_del(timer);
       }
       break;
     }
-    case WIFI_CONNECTING: {
-        if (WiFi.status() == WL_CONNECTED) {
-            currentWifiState = WIFI_CONNECTED;
-            Serial.println("WiFi connected");
-            Serial.print("IP address: ");
-            Serial.println(WiFi.localIP());
-            
-            // Update UI to show connected state
-            updateWifiWidget(currentWifiState);
-          } 
-          else if (millis() - scanStartTime > 10000 || attempt == max_attempts) {
-            // Connection timeout after 20 seconds
-            currentWifiState = WIFI_CONNECTION_FAILED;
-            Serial.println("WiFi connection failed or timed out");
-            
-            // Update UI to show connection failure
-            updateWifiWidget(currentWifiState);
-          }
+    case WL_CONNECTED: {
+          Serial.println("WiFi connected");
+          Serial.print("IP address: ");
+          Serial.println(WiFi.localIP());
+          
+          // Update UI to show connected state
+          updateWifiWidget(WL_CONNECTED);
+          
+          // if wifi is connected stop the timer
+          lv_timer_del(timer);
       break;
     }
-    case WIFI_CONNECTED: {
-      // TODO
-    }
+    default:
+    debugCurrentWifiStatus();
   }
 }
 
 void check_scan_status_timer_cb(lv_timer_t * timer) {
-    int result = WiFi.scanComplete();
+    debugCurrentWifiStatus();
+    // int result = WiFi.scanComplete();
 
-    if (result == WIFI_SCAN_RUNNING) {
-        return;
-    }
+    // if (result == WIFI_SCAN_RUNNING) {
+    //     return;
+    // }
 
-    lv_timer_del(timer);
+    //lv_timer_del(timer);
 
-    processWifiState(); 
+    processWifiState(timer); 
 
-    updateWifiWidget(currentWifiState);
+    //updateWifiWidget(currentWifiState);
 }
 
 // const char* wifiScanStateToString(WifiScanState state) {
 //   switch (state) {
 //     case WIFI_IDLE: return "IDLE";
 //     case WIFI_SCANNING: return "SCANNING";
-//     case WIFI_SCAN_COMPLETE: return "SCAN COMPLETE";
 //     case WIFI_CONNECTING: return "CONNECTING";
 //     case WIFI_CONNECTED: return "CONNECTED";
 //     case WIFI_CONNECTION_FAILED: return "CONNECTION FAILED";
@@ -292,69 +353,9 @@ void check_scan_status_timer_cb(lv_timer_t * timer) {
 
 
 void startWifiScan() {
-   wl_status_t wifiStatus = WiFi.status();
-
-  if (wifiStatus == WL_DISCONNECTED || currentWifiState == WIFI_CONNECTION_FAILED) {
-    Serial.println("Resetting WiFi before scan");
-    WiFi.disconnect(true);  // Disconnect with 'true' to clear saved settings
-    delay(200);  // Give it time to reset
-    WiFi.mode(WIFI_STA); 
-  }
-
-  // Serial.print("Current WiFi status: ");
-  // switch (wifiStatus) {
-  //   case WL_IDLE_STATUS:
-  //     Serial.println("Idle");
-  //     break;
-  //   case WL_NO_SSID_AVAIL:
-  //     Serial.println("No SSID Available");
-  //     break;
-  //   case WL_SCAN_COMPLETED:
-  //     Serial.println("Scan Completed");
-  //     break;
-  //   case WL_CONNECTED:
-  //     Serial.println("Connected");
-  //     break;
-  //   case WL_CONNECT_FAILED:
-  //     Serial.println("Connection Failed");
-  //     break;
-  //   case WL_CONNECTION_LOST:
-  //     Serial.println("Connection Lost");
-  //     break;
-  //   case WL_DISCONNECTED:
-  //     Serial.println("Disconnected");
-  //     break;
-  //   default:
-  //     Serial.println("Unknown");
-  //     break;
-  // }
-
-  // Serial.print("Current WifiScanState: ");
-  // Serial.println(wifiScanStateToString(currentWifiState));
-
-  if (currentWifiState == WIFI_IDLE || currentWifiState == WIFI_CONNECTION_FAILED) {
-  
-    currentWifiState = WIFI_SCANNING;
-    scanStartTime = millis();
-    
-    //Free previous results if they exist
-    if (networksList != NULL) {
-      freeNetworks(networksList);
-      networksList = NULL;
-    }
-    
-    // Start asynchronous WiFi scan
-    WiFi.scanNetworks(true); // true = async mode
-    
-    Serial.println("WiFi scan started");
-    
-    lv_timer_create(check_scan_status_timer_cb, 500, NULL);
-    // TODO: update UI to show wifi scanning animation in lvgl
-    //updateWifiScanningUI(true);
-  }
-
+  wl_status_t wifiStatus = WiFi.status();
   // IF WIFI IS IN CONNECTED STATE AND A SCAN IS ATTEMPTED, SIMPLY REMOVE THE LOADING SPINNER AND ADD THE CONNECTED NETWORK ONLY
-  if(currentWifiState == WIFI_CONNECTED) {
+  if(wifiStatus == WL_CONNECTED) {
 
     struct Network* currentNetwork = new struct Network[1];
 
@@ -365,6 +366,31 @@ void startWifiScan() {
     currentNetwork[0].encryptionType = "";
 
     updateWifiNetworkList(1, currentNetwork);
-  }
-}
+  } else {
+      Serial.println("Resetting WiFi before scan");
+      WiFi.mode(WIFI_STA); 
+      WiFi.disconnect(true); // This clears old configs and resets properly
+      delay(200); // Let the WiFi hardware reset
 
+      debugCurrentWifiStatus();
+
+      scanStartTime = millis();
+      
+      //Free previous results if they exist
+      if (networksList != NULL) {
+        freeNetworks(networksList);
+        networksList = NULL;
+      }
+      
+      // Start asynchronous WiFi scan
+      WiFi.scanNetworks(true); // true = async mode
+      
+      Serial.println("WiFi scan started");
+      
+      lv_timer_create(check_scan_status_timer_cb, 500, NULL);
+      // TODO: update UI to show wifi scanning animation in lvgl
+      //updateWifiScanningUI(true);
+
+  }
+
+}

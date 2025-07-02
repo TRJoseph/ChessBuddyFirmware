@@ -10,10 +10,10 @@ constexpr int buttonPin = 4;
 constexpr int ledPin = 17;
 
 // Shift Register Pins
-constexpr int latchPin = 7;
-constexpr int clockEnablePin = 9;
-constexpr int dataIn = 6;
-constexpr int clockPin = 8;
+constexpr int latchPin = 1;
+constexpr int clockEnablePin = 3;
+constexpr int dataIn = 47;
+constexpr int clockPin = 2;
 
 // Board Size
 constexpr int numRegisters = 8;

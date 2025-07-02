@@ -3,6 +3,104 @@
 #include <Main_Definitions.h>
 #include <boardcontrol.h>
 
+struct Square {
+    byte status; // 0=empty, 1=occupied, 2=potentially_captured
+    byte color;  // 0=none, 1=white, 2=black
+};
+
+Square squareStates[64];
+
+// Chess board x,y positions relative to the robotic arm
+// bottom left square is index 0, top right square is index 63
+int SquarePositions[64][2] = {
+  // 1st rank
+  {-135, 102}, 
+  {-97, 102},
+  {-60, 102},
+  {-22, 102},
+  {18, 102},
+  {59, 102},
+  {97, 102},
+  {135, 102},
+  // 2nd rank
+  {-135, 140}, 
+  {-97, 140},
+  {-60, 140},
+  {-22, 140},
+  {18, 140},
+  {59, 140},
+  {97, 140},
+  {135, 140},
+  // 3rd rank
+  {-135, 182}, 
+  {-97, 182},
+  {-60, 182},
+  {-22, 182},
+  {18, 182},
+  {59, 182},
+  {97, 182},
+  {135, 182},
+  // 4th rank
+  {-135, 220}, 
+  {-97, 220},
+  {-60, 220},
+  {-22, 220},
+  {18, 220},
+  {59, 220},
+  {97, 220},
+  {135, 220},
+  // 5th rank
+  {-135, 258}, 
+  {-97, 258},
+  {-60, 258},
+  {-22, 258},
+  {18, 258},
+  {59, 258},
+  {97, 258},
+  {135, 258},
+  // 6th rank
+  {-135, 297}, 
+  {-97, 297},
+  {-60, 297},
+  {-22, 297},
+  {18, 297},
+  {59, 297},
+  {97, 297},
+  {135, 297},
+  // 7th rank
+  {-135, 336}, 
+  {-97, 336},
+  {-60, 336},
+  {-22, 336},
+  {18, 336},
+  {59, 336},
+  {97, 336},
+  {135, 336},
+  // 8th rank
+  {-135, 375}, 
+  {-97, 375},
+  {-60, 375},
+  {-22, 375},
+  {18, 375},
+  {59, 375},
+  {97, 375},
+  {135, 375},
+};
+
+Square currentBoardState[64];
+
+// array of key value pairs for each piece offset
+// this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
+KeyValuePair PieceZAxisOffsets[] = {
+    {PieceType::Pawn, -3740},
+    {PieceType::Knight, -2980},
+    {PieceType::Bishop, -2500},
+    {PieceType::Rook, -3370},
+    {PieceType::Queen, -1940},
+    {PieceType::King, -650} // king is good
+};
+
+
 /* THINGS TO NOTE:
 The X stepper motor is referring to the base joint rotation. The Y stepper motor is referring to the arm segment joint rotation.
 */
@@ -26,6 +124,7 @@ public:
         motor.setAcceleration(normalAcceleration);
     }
 
+
     void calibrate(int limitSwitchPin) {
         motor.setMaxSpeed(calibrationMaxSpeed);
         motor.setAcceleration(calibrationAcceleration);
@@ -33,10 +132,10 @@ public:
         motor.moveTo(-30000);  // move far in reverse
   
         while (digitalRead(limitSwitchPin) == LOW) {
-          Serial.println("Axis Calibrated");
           motor.run();    // continue running until switch is triggered
         }
 
+        Serial.println("Axis Calibrated!");
         motor.setCurrentPosition(0); // set zero position after calibration
 
         // reset speed and accel settings
@@ -44,6 +143,7 @@ public:
 
         delay(2000);
     }
+
     
     void moveTo(long position) {
         motor.moveTo(position);
@@ -73,7 +173,7 @@ void runCalibrationRoutine() {
   //zStepperMotor.moveTo(3500);
 
   // THIS LINE IS TEMPORARY, ITS TO ENSURE THE ARM DOES NOT TURN PAST THE LIMIT SWITCH
-  xStepperMotor.moveTo(500);
+  //xStepperMotor.moveTo(500);
   //
 
   xStepperMotor.calibrate(xLimitPin);
@@ -83,8 +183,15 @@ void runCalibrationRoutine() {
   yStepperMotor.moveTo(10280);
 
   zStepperMotor.calibrate(zLimitPin);
-  zStepperMotor.moveTo(9500);
+  zStepperMotor.moveTo(11000);
   xStepperMotor.moveTo(729);
+
+  xStepperMotor.setNormalMotorSettings();
+  yStepperMotor.setNormalMotorSettings();
+  
+  xStepperMotor.motor.setCurrentPosition(0);
+  yStepperMotor.motor.setCurrentPosition(0);
+  zStepperMotor.motor.setCurrentPosition(0);
 }
 
 void gotoParkPosition() {
@@ -653,15 +760,15 @@ void setupBoard() {
   pinMode(zDirPin, OUTPUT);
   
   // specify limit switch pin outs for normally open operations
-  pinMode(xLimitPin, INPUT_PULLUP); 
-  pinMode(yLimitPin, INPUT_PULLUP); 
-  pinMode(zLimitPin, INPUT_PULLUP);
+  pinMode(xLimitPin, INPUT); 
+  pinMode(yLimitPin, INPUT); 
+  pinMode(zLimitPin, INPUT);
   
   // button pin for user move completion feedback
-  pinMode(buttonPin, INPUT_PULLUP);
+  //pinMode(buttonPin, INPUT_PULLUP);
 
   // Set built-in LED pin as output
-  pinMode(ledPin, OUTPUT);
+  //pinMode(ledPin, OUTPUT);
 
   // specifies board electronics pin configurations
   pinMode(latchPin, OUTPUT);
@@ -677,12 +784,8 @@ void setupBoard() {
   // calibrate all X,Y,Z starting positions
   runCalibrationRoutine();
 
-  xStepperMotor.setNormalMotorSettings();
-  yStepperMotor.setNormalMotorSettings();
-  
-  xStepperMotor.motor.setCurrentPosition(0);
-  yStepperMotor.motor.setCurrentPosition(0);
-  zStepperMotor.motor.setCurrentPosition(0);
+  gotoParkPosition();
+ 
 }
 
 

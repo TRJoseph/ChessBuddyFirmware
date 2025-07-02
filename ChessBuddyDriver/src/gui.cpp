@@ -8,6 +8,7 @@
 // Misc Image Includes
 #include "main_logo.h"
 #include "monitor.h"
+#include "robotic_arm.h"
 
 // Piece Image Includes
 #include "black_pawn.h"
@@ -51,6 +52,7 @@ lv_obj_t *wifi_icon;
 lv_obj_t *settings_menu;
 lv_obj_t * main_page;
 lv_obj_t *wifi_sub_page;
+//lv_obj_t *arm_mechanics_sub_page;
 lv_obj_t *wifiNetworkContainer;
 
 lv_obj_t *loading_spinner;
@@ -68,6 +70,7 @@ static lv_style_t alert_btn_style;
 static lv_style_t screen_style;
 static lv_style_t active_timer;
 static lv_style_t inactive_timer;
+static lv_style_t calibration_container;
 
 
 /* Variables for Chess Clock Page (active game page) */
@@ -106,15 +109,22 @@ static void style_init(void) {
     lv_style_set_bg_color(&alert_btn_style, lv_color_hex(0xFF3131));
     lv_style_set_border_opa(&alert_btn_style, LV_OPA_TRANSP);
 
-
+    lv_style_init(&active_timer);
     lv_style_set_bg_opa(&active_timer, LV_OPA_TRANSP);
     lv_style_set_border_opa(&active_timer, LV_OPA_TRANSP);
 
+    lv_style_init(&inactive_timer);
     lv_style_set_bg_color(&inactive_timer, lv_palette_main(LV_PALETTE_GREY));
     lv_style_set_bg_opa(&inactive_timer, LV_OPA_50);
     lv_style_set_border_opa(&inactive_timer, LV_OPA_50);
 
-    
+    lv_style_init(&calibration_container);
+    lv_style_set_border_color(&calibration_container, lv_color_black());
+    lv_style_set_border_width(&calibration_container, 2);
+    lv_style_set_pad_all(&calibration_container, 10);
+    lv_style_set_bg_color(&calibration_container, lv_color_hex(0xffffff));
+    lv_style_set_bg_opa(&calibration_container, LV_OPA_COVER);
+
 }
 
 void start_touch_object() {
@@ -171,7 +181,7 @@ void start_button_handler(lv_event_t * e)
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        if(getWifiState() == WIFI_CONNECTED) {
+        if(WiFi.status() == WL_CONNECTED) {
             // go to first setup page
             switch_to_screen(side_select_screen);
             //switch_to_side_select_screen();
@@ -257,7 +267,7 @@ void wifi_submenu_handler(lv_event_t * e) {
 
     startWifiScan();
 
-    updateWifiWidget(getWifiState());
+    updateWifiWidget(WiFi.status());
 }
 
 static void ta_event_cb(lv_event_t * e)
@@ -300,10 +310,10 @@ static void ta_event_cb(lv_event_t * e)
         lv_obj_del(loading_spinner);
         lv_obj_clear_flag(networkInfo->container, LV_OBJ_FLAG_HIDDEN);
 
-        WifiScanState currentWifiState = getWifiState();
+        wl_status_t wifiStatus = WiFi.status();
 
         // wifi success UI updates
-        if(currentWifiState == WIFI_CONNECTED) {
+        if(wifiStatus == WL_CONNECTED) {
             
             // pswd btn label
             lv_obj_t * child = lv_obj_get_child(networkInfo->container, 0);
@@ -337,8 +347,7 @@ static void ta_event_cb(lv_event_t * e)
             lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
         }
 
-
-        updateWifiWidget(currentWifiState);
+        updateWifiWidget(wifiStatus);
     }
 }
 
@@ -433,7 +442,7 @@ void disconnect_network_submenu_handler(lv_event_t * e) {
     lv_menu_clear_history(settings_menu);
     lv_menu_set_page(settings_menu, main_page);
     
-    updateWifiWidget(getWifiState());
+    updateWifiWidget(WiFi.status());
 }
 
 
@@ -490,7 +499,7 @@ void updateWifiNetworkList(int networkCount, struct Network* networks) {
         lv_menu_set_load_page_event(settings_menu, cont, network_sub_page);
 
         // place disconnect button instead of passwords prompt screen 
-        if(getWifiState() == WIFI_CONNECTED && networkCount == 1) {
+        if(WiFi.status() == WL_CONNECTED && networkCount == 1) {
             // disconnect from network button
             lv_obj_t *disconnect_btn = lv_button_create(network_sub_page);
             lv_obj_add_event_cb(disconnect_btn, disconnect_network_submenu_handler, LV_EVENT_CLICKED, networkInfo);
@@ -521,14 +530,14 @@ void updateWifiNetworkList(int networkCount, struct Network* networks) {
   }
 }
 
-void updateWifiWidget(WifiScanState status) {
+void updateWifiWidget(wl_status_t wifiStatus) {
     // get connection status
     // Delete the previous icon if it exists
     if (wifi_icon) {
         lv_obj_del(wifi_icon);
         wifi_icon = NULL;
     }
-    if (status == WIFI_CONNECTED) {
+    if (wifiStatus == WL_CONNECTED) {
         // Create a static image instead
         wifi_icon = lv_image_create(lv_layer_top());
         lv_obj_align(wifi_icon, LV_ALIGN_TOP_RIGHT, -5, 8);
@@ -545,7 +554,7 @@ void updateWifiWidget(WifiScanState status) {
           lv_image_set_src(wifi_icon, &wifi_low_strength);
         }
 
-    } else if(status == WIFI_CONNECTION_FAILED || status == WIFI_IDLE) {
+    } else if(wifiStatus == WL_CONNECT_FAILED || wifiStatus == WL_IDLE_STATUS || wifiStatus == WL_DISCONNECTED) {
         wifi_icon = lv_image_create(lv_layer_top());
         lv_obj_align(wifi_icon, LV_ALIGN_TOP_RIGHT, -5, 8);
         lv_image_set_src(wifi_icon, &wifi_off);
@@ -562,7 +571,7 @@ void updateWifiWidget(WifiScanState status) {
 
 void setup_top_layer() {
     style_init();
-    updateWifiWidget(getWifiState());
+    updateWifiWidget(WiFi.status());
 }
 
 void setup_start_screen() {
@@ -642,6 +651,27 @@ void setup_wifi_prompt_screen() {
     lv_obj_set_style_text_font(settings_btn_icon, &lv_font_montserrat_42, 0);
 }
 
+void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
+
+    lv_obj_t* calibration_cont = lv_obj_create(arm_mechanics_page);
+    lv_obj_set_size(calibration_cont, 300, 120);
+    lv_obj_center(calibration_cont);
+    lv_obj_set_flex_flow(calibration_cont, LV_FLEX_FLOW_COLUMN);
+    lv_obj_add_style(calibration_cont, &calibration_container, LV_PART_MAIN);
+
+    lv_obj_t* calibration_btn = lv_btn_create(arm_mechanics_page);
+    lv_obj_set_size(calibration_btn, 200, 80);
+    lv_obj_align(calibration_btn, LV_ALIGN_TOP_MID, 0, 80);
+    lv_obj_add_style(calibration_btn, &generic_btn_style, 0);
+    //lv_obj_add_event_cb(settings_btn, settings_button_handler_special, LV_EVENT_ALL, NULL);
+
+    lv_obj_t* calibration_btn_icon = lv_label_create(calibration_btn);
+    lv_label_set_text(calibration_btn_icon, "Run Calibration Routine");
+    lv_obj_center(calibration_btn_icon);
+    lv_obj_set_style_text_font(calibration_btn_icon, &lv_font_montserrat_24, 0);
+
+}
+
 void setup_settings_screen() {
     settings_screen = lv_obj_create(NULL);
 
@@ -676,8 +706,12 @@ void setup_settings_screen() {
     lv_obj_t * section;
 
 
-    /*Create a sub page*/
+    /*Create wifi sub page*/
     wifi_sub_page = lv_menu_page_create(settings_menu, NULL);
+
+    /*Create arm mechanics sub page*/
+    lv_obj_t * arm_mechanics_sub_page = lv_menu_page_create(settings_menu, "Arm Mechanics");
+    setup_arm_mechanics_subpage(arm_mechanics_sub_page);
 
     /*Create a main page*/
     main_page = lv_menu_page_create(settings_menu, "Settings");
@@ -714,6 +748,22 @@ void setup_settings_screen() {
     lv_label_set_text(display_cont_label, "Display Configuration");
     lv_label_set_long_mode(display_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(display_cont_label, 1);
+
+    // ROBOTIC ARM MECHANICS PAGE (IMPORTANT)
+    // for settings related to the chess buddy arm
+    cont = lv_menu_cont_create(main_page);
+    lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
+
+    lv_menu_set_load_page_event(settings_menu, cont, arm_mechanics_sub_page);
+    
+    lv_obj_t *robotic_arm_image = lv_image_create(cont);
+    lv_image_set_src(robotic_arm_image, &robotic_arm);
+
+    lv_obj_t *robotic_arm_cont_label = lv_label_create(cont);
+    lv_label_set_text(robotic_arm_cont_label, "Arm Mechanics");
+    lv_label_set_long_mode(robotic_arm_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_flex_grow(robotic_arm_cont_label, 1);
 
 
     lv_menu_set_page(settings_menu, main_page);
@@ -1137,7 +1187,10 @@ void end_game_button_handler(lv_event_t * e) {
     switch_to_screen(start_screen);
 }
 
-void reset_active_game_state() {
+///
+/// THIS CONTROLS INTERFACING WITH BOARDCONTROL TO SET UP A NEW GAME
+///
+void set_active_game_state() {
     if(active_game_screen != NULL) {
         lv_obj_del(active_game_screen); 
         active_game_screen = NULL;
@@ -1151,6 +1204,8 @@ void reset_active_game_state() {
         lv_timer_del(computer_timer);
         computer_timer = NULL;
     }
+
+    setupBoard();
 }
 
 
@@ -1159,7 +1214,7 @@ void reset_active_game_state() {
 void setup_active_game_screen() {
 
     // TODO: maybe need to do some checks here first to ensure the pieces are in the correct starting arrangement, etc, etc
-    reset_active_game_state();
+    set_active_game_state();
 
     active_game_screen = lv_obj_create(NULL);
 
@@ -1267,7 +1322,6 @@ void switch_to_start() {
 
 
 void initializeGUI() {
-    setup_preferences();
     setup_top_layer();
     setup_start_screen();
     setup_wifi_prompt_screen();

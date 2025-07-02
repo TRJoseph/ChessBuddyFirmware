@@ -3,6 +3,8 @@
 
 #include <lvgl.h>
 #include "wlan.h"
+#include "boardcontrol.h"
+
 
 struct NetworkInfo {
     struct Network network;
@@ -62,7 +64,7 @@ static void settings_button_handler(lv_event_t * e);
 static void back_button_handler(lv_event_t * e);
 
 
-void updateWifiWidget(WifiScanState status);
+void updateWifiWidget(wl_status_t wifiStatus);
 void updateWifiNetworkList(int networkCount, struct Network* networks);
 
 

@@ -1,6 +1,8 @@
 #ifndef WLAN_H
 #define WLAN_H
 #include <Arduino.h>
+#include <WiFi.h>
+#include <lvgl.h>
 
 struct Network {
   int num;
@@ -10,23 +12,13 @@ struct Network {
   String encryptionType;
 };
 
-enum WifiScanState {
-  WIFI_IDLE,
-  WIFI_SCANNING,
-  WIFI_CONNECTING,
-  WIFI_CONNECTED,
-  WIFI_CONNECTION_FAILED
-};
-
 void freeNetworks(struct Network* networks);
 void startWifiScan();
 void connectToWifiNetwork(const String& ssid, const String& password);
 void connectToWifiNetworkBlocking(const String& ssid, const String& password);
 void disconnectFromWifiNetwork();
-void setWifiState(WifiScanState state);
-WifiScanState getWifiState();
 int getWifiSignalStrength();
-void processWifiState();
+void processWifiState(lv_timer_t * timer);
 
 
 void setup_preferences();
