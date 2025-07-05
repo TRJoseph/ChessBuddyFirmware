@@ -56,7 +56,7 @@ class UCIEngine:
                 if line.startswith("bestmove"):
                     return line.split()[1]
 
-engine_path = "./src/engine_executables/v7/TigerEngine.exe"
+engine_path = "./src/engine_executables/v7/TigerEngine"
 
 # start engine
 engine = UCIEngine(engine_path)
