@@ -9,9 +9,6 @@ import subprocess
 import threading
 import os
 
-
-app = Flask(__name__)
-
 class UCIEngine:
     def __init__(self, engine_path):
         self.process = subprocess.Popen(
@@ -56,32 +53,31 @@ class UCIEngine:
                 if line.startswith("bestmove"):
                     return line.split()[1]
 
-engine_path = "./src/engine_executables/v7/TigerEngine"
 
-# start engine
-engine = UCIEngine(engine_path)
+def create_app():
+    app = Flask(__name__)
 
+    engine_path = "./src/engine_executables/v7/TigerEngine"
 
-@app.route('/')
-def home():
-    return "TigerEngine server is running."
-
-@app.route('/get_move', methods=['POST'])
-def get_move():
-    data = request.get_json()
-    fen = data.get("fen")
-
-    if not fen:
-        return jsonify({"error": "FEN not provided"}), 400
-
-    try:
-        best_move = engine.get_best_move(fen)
-        return jsonify({"move": best_move})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # start engine
+    engine = UCIEngine(engine_path)
 
 
-if __name__ == '__main__':
-    # attempts to get render port set, falls back to 5000
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    @app.route('/')
+    def home():
+        return "TigerEngine server is running."
+
+    @app.route('/get_move', methods=['POST'])
+    def get_move():
+        data = request.get_json()
+        fen = data.get("fen")
+
+        if not fen:
+            return jsonify({"error": "FEN not provided"}), 400
+
+        try:
+            best_move = engine.get_best_move(fen)
+            return jsonify({"move": best_move})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    return app
