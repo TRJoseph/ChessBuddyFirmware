@@ -697,7 +697,6 @@ void resetPieceDetectionParameters() {
   numPiecesPickedUp = 0;
   potentialMovedToSquare = -1;
   captureMove = false;
-
 }
 
 uint64_t readShiftRegisters() {

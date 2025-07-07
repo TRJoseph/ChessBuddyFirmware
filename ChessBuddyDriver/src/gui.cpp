@@ -5,6 +5,7 @@
 #include "wlan.h"
 #include <stack>
 #include <serverInterface.h>
+#include <boardcontrol.h>
 
 // Misc Image Includes
 #include "main_logo.h"
