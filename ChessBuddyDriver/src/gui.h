@@ -68,9 +68,12 @@ static void start_button_handler(lv_event_t * e);
 static void settings_button_handler(lv_event_t * e);
 static void back_button_handler(lv_event_t * e);
 
-
+// wifi-related function declarations
 void updateWifiWidget(wl_status_t wifiStatus);
 void updateWifiNetworkList(int networkCount, struct Network* networks);
+
+// misc
+void end_engine_turn_handler();
 
 
 #endif

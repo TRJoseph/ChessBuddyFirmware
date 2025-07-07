@@ -20,6 +20,12 @@ extern bool activeGame;
 extern char moveHistory[MAX_MOVES][MOVE_LENGTH];
 extern int moveCount;
 
+// for board piece detection
+extern int potentialMovedFromSquare;
+extern int potentialMovedToSquare;
+extern int numPiecesPickedUp;
+extern bool captureMove;
+
 enum class SpecialMove {
     None,
     Castling, 
@@ -75,6 +81,7 @@ void processCommand(String input);
 void handleArmMove(const char* move);
 void instantiateBoardState();
 void updateCurrentBoardState();
+void resetPieceDetectionParameters();
 uint64_t readShiftRegisters();
 String squareNumToAlgebraic(int square);
 String combineSquareStrings(int fromSquare, int toSquare);

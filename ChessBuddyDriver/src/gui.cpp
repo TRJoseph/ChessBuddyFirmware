@@ -1262,7 +1262,17 @@ void end_turn_btn_handler(lv_event_t * e)
         // scan last time to get finalized move
         scanningUserMove(true, true);
 
-        getBestMoveFromServer();
+        resetPieceDetectionParameters();
+
+        // non-blocking task for the http request to get a move
+        xTaskCreate(
+            getBestMoveTask,   
+            "GetBestMoveTask", 
+            12288,              
+            NULL,              
+            1,                
+            NULL 
+        );
     }
 }
 

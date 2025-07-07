@@ -3,12 +3,13 @@
 #include <Main_Definitions.h>
 #include <boardcontrol.h>
 #include <serverInterface.h>
+#include <gui.h>
 
 
 // TODO: move these and movehistory variables into a gamestate.cpp/.h file pair
 char moveHistory[MAX_MOVES][MOVE_LENGTH];
 int moveCount = 0;
-bool calibrationStatus = true;
+bool calibrationStatus = false;
 bool activeGame = false;
 bool userSideToMove = false;
 
@@ -22,10 +23,12 @@ struct Square {
 Square squareStates[64];
 Square currentBoardState[64];
 
-int potentialMovedFromSquare = -1;
-int potentialMovedToSquare = -1;
-int numPiecesPickedUp = 0;
-bool captureMove = false;
+
+// for board piece detection
+int potentialMovedFromSquare;
+int potentialMovedToSquare;
+int numPiecesPickedUp;
+bool captureMove;
 
 // Chess board x,y positions relative to the robotic arm
 // bottom left square is index 0, top right square is index 63
@@ -107,14 +110,24 @@ int SquarePositions[64][2] = {
 
 // array of key value pairs for each piece offset
 // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
+// KeyValuePair PieceZAxisOffsets[] = {
+//     {PieceType::Pawn, -3740},
+//     {PieceType::Knight, -2980},
+//     {PieceType::Bishop, -2500},
+//     {PieceType::Rook, -3370},
+//     {PieceType::Queen, -1940},
+//     {PieceType::King, -650} // king is good
+// };
+
 KeyValuePair PieceZAxisOffsets[] = {
-    {PieceType::Pawn, -3740},
-    {PieceType::Knight, -2980},
-    {PieceType::Bishop, -2500},
-    {PieceType::Rook, -3370},
-    {PieceType::Queen, -1940},
-    {PieceType::King, -650} // king is good
+    {PieceType::Pawn, -5240},
+    {PieceType::Knight, -4480},
+    {PieceType::Bishop, -4000},
+    {PieceType::Rook, -4870},
+    {PieceType::Queen, -3440},
+    {PieceType::King, -2150} // king is good
 };
+
 
 
 /* THINGS TO NOTE:
@@ -268,7 +281,7 @@ void performQuietMove(String moveString, PieceType pieceType = PieceType::King, 
 
   zStepperMotor.moveTo(pieceZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5500);
+  zStepperMotor.moveTo(5800);
 
   gotoParkPosition();
 }
@@ -407,25 +420,22 @@ int getPieceZOffset(PieceType key) {
     return -1;  // return -1 if the key is not found 
 }
 
-PieceType stringToPieceType(const String& pieceStr) {
-  String lowerStr = pieceStr;
-  lowerStr.toLowerCase();
-
-  if (lowerStr.indexOf("0") != -1) {
+PieceType stringToPieceType(const char* pieceStr) {
+  if (strchr(pieceStr, '0') != nullptr) {
     return PieceType::Pawn;
-  } else if (lowerStr.indexOf("1") != -1) {
+  } else if (strchr(pieceStr, '1') != nullptr) {
     return PieceType::Bishop;
-  } else if (lowerStr.indexOf("2") != -1) {
+  } else if (strchr(pieceStr, '2') != nullptr) {
     return PieceType::Knight;
-  } else if (lowerStr.indexOf("3") != -1) {
+  } else if (strchr(pieceStr, '3') != nullptr) {
     return PieceType::Rook;
-  } else if (lowerStr.indexOf("4") != -1) {
+  } else if (strchr(pieceStr, '4') != nullptr) {
     return PieceType::Queen;
-  } else if (lowerStr.indexOf("5") != -1) {
+  } else if (strchr(pieceStr, '5') != nullptr) {
     return PieceType::King;
   } else {
     Serial.println("Error: Invalid piece type.");
-    return PieceType::King;  // fallback to king
+    return PieceType::King;  // fallback to King
   }
 }
 
@@ -496,23 +506,25 @@ void inverseKinematics(long x, long y) {
   }
 }
 
-int splitString(String input, char delimiter, String outputArray[]) {
-  int tokenIndex = 0;
-  int startIndex = 0;
-  int delimiterIndex = input.indexOf(delimiter);
+uint8_t splitString(const char* input, char delimiter, char tokens[][10], uint8_t maxTokens = 5) {
+  uint8_t tokenIndex = 0;
+  uint8_t charIndex = 0;
 
-  while (delimiterIndex != -1) {
-    outputArray[tokenIndex++] = input.substring(startIndex, delimiterIndex);
-    startIndex = delimiterIndex + 1;
-    delimiterIndex = input.indexOf(delimiter, startIndex);
-
-    // avoids exceeding the array size
-    if (tokenIndex >= 5) break;
+  while (*input && tokenIndex < maxTokens) {
+    if (*input == delimiter) {
+      tokens[tokenIndex][charIndex] = '\0';
+      tokenIndex++;
+      charIndex = 0;
+    } else if (charIndex < 9) {
+      tokens[tokenIndex][charIndex++] = *input;
+    }
+    input++;
   }
-  outputArray[tokenIndex++] = input.substring(startIndex);
 
-  return tokenIndex; 
+  tokens[tokenIndex][charIndex] = '\0'; 
+  return tokenIndex + 1;
 }
+
 
 /* this function edits the square state board to reflect the engine move */
 // TODO: THIS WILL NEED EDITS FOR DIFFERENT MOVE TYPES LIKE CASTLING, EN PASSANT, AND PROMOTIONS
@@ -528,7 +540,7 @@ void editSquareStates(int fromSquare, int toSquare) {
   squareStates[toSquare] = temp;
 }
 
-void algebraicToSquares(const String& move, int& fromSquare, int& toSquare) {
+void algebraicToSquares(char move[], uint8_t& fromSquare, uint8_t& toSquare) {
   char fromFile = move[0];
   char fromRank = move[1];
   char toFile = move[2];
@@ -628,17 +640,19 @@ void addMove(const char* move) {
 
 void handleArmMove(const char* move) {
   const char delimiter = '|';
-  String tokens[5];
+  char tokens[5][10];
 
-  int tokenCount = splitString(move, delimiter, tokens);
+  uint8_t tokenCount = splitString(move, delimiter, tokens);
 
   // moveString should contain a string like "e2e4"
-  String moveString = tokens[0];
+  char moveString[5];
+
+  strcpy(moveString, tokens[0]);
 
   // adds arm move to the movelist
-  addMove(moveString.c_str());
+  addMove(moveString);
 
-  int fromSquare = 0, toSquare = 0;
+  uint8_t fromSquare = 0, toSquare = 0;
   algebraicToSquares(moveString, fromSquare, toSquare);
 
   // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
@@ -648,6 +662,8 @@ void handleArmMove(const char* move) {
 
   editSquareStates(fromSquare, toSquare);
 
+
+  end_engine_turn_handler();
 }
 
 void instantiateBoardState() {
@@ -674,6 +690,14 @@ void updateCurrentBoardState() {
   for (int i = 0; i < 64; i++) {
     currentBoardState[i] = squareStates[i];
   }
+}
+
+void resetPieceDetectionParameters() {
+  potentialMovedFromSquare = -1;
+  numPiecesPickedUp = 0;
+  potentialMovedToSquare = -1;
+  captureMove = false;
+
 }
 
 uint64_t readShiftRegisters() {
@@ -725,16 +749,13 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
 
   potentialMovedFromSquare = -1;
   numPiecesPickedUp = 0;
-  potentialMovedToSquare = -1;
-  captureMove = false;
-  //if (!captureMove) potentialMovedToSquare = -1;
+  if (!captureMove) potentialMovedToSquare = -1;
 
 
   // Update board state
   for (int i = 0; i < 64; i++) {
     currentBoardState[i].status = (binaryBoardState >> i) & 1 ? SquareStatus::Occupied : SquareStatus::Empty;
   }
-
   
   Serial.print("square states: ");
   for (int i = numBits - 1; i >= 0; i--) {                                                  
@@ -752,28 +773,31 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
   Serial.println();
 
   // Detect move
+  int friendlyPieceCount = 0;
   for (int i = 0; i < 64; i++) {
     if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == SquareStatus::Occupied) {
       if (squareStates[i].color == SquareColor::White) {
-        potentialMovedFromSquare = i + 1;
-        Serial.print("Potential moved from square: ");
-        Serial.println(potentialMovedFromSquare);
-
-        numPiecesPickedUp++;
+        if(potentialMovedFromSquare == -1) {
+          potentialMovedFromSquare = i + 1;
+          Serial.print("Potential moved from square: ");
+          Serial.println(potentialMovedFromSquare);
+        }
+        friendlyPieceCount++;
       }
     }
   }
+  numPiecesPickedUp = friendlyPieceCount;
 
-  // for(int i = 0; i < 64; i++) {
-  //   if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
-  //     if (currentBoardState[i].color == 2) {
-  //       potentialMovedToSquare = i + 1;
-  //       captureMove = true;
-  //       Serial.print("Potential moved to square (capture): ");
-  //       Serial.println(potentialMovedToSquare);
-  //     }
-  //   }
-  // }
+  for(int i = 0; i < 64; i++) {
+    if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
+      if (currentBoardState[i].color == 2) {
+        potentialMovedToSquare = i + 1;
+        captureMove = true;
+        Serial.print("Potential moved to square (capture): ");
+        Serial.println(potentialMovedToSquare);
+      }
+    }
+  }
 
   
   for(int i = 0; i < 64; i++) {
@@ -785,10 +809,27 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
   }
 
 
-  Serial.print("Potential moved from square (before finalization): ");
+  // TODO: DELETE THIS SOON
+  // if(isFinalizedMove) {
+
+  // } else if(potentialMovedFromSquare == -1 && captureMove) {
+
+  // }
+
+  if(potentialMovedFromSquare == -1 && captureMove && !isFinalizedMove) {
+    potentialMovedToSquare = -1;
+    captureMove = false;
+  }
+
+
+  Serial.print("Potential moved from square: ");
   Serial.println(potentialMovedFromSquare);
 
-  Serial.print("Potential moved to square (before finalization)(quiet move): ");
+  if(!captureMove) {
+    Serial.print("Potential moved to square (quiet move): ");
+  } else {
+      Serial.print("Potential moved to square (capture move): ");
+  }
   Serial.println(potentialMovedToSquare);
 
   // Check move validity
@@ -977,6 +1018,7 @@ void boardStartNewGame() {
   userSideToMove = true;
   instantiateBoardState();
   updateCurrentBoardState();
+  resetPieceDetectionParameters();
 }
 
 void setupBoard() {

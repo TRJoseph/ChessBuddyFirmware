@@ -18,6 +18,7 @@ String buildMovesString() {
   return moves;
 }
 
+
 void getBestMoveFromServer() {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
@@ -67,4 +68,9 @@ void getBestMoveFromServer() {
     } else {
         Serial.println("WiFi not connected");
     }
+}
+
+void getBestMoveTask(void *parameter) {
+  getBestMoveFromServer();
+  vTaskDelete(NULL);
 }
