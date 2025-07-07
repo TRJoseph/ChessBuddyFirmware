@@ -42,7 +42,7 @@ class UCIEngine:
     def get_best_move(self, position_string):
         with self.lock:
             self.send_command(f"position {position_string}")
-            self.send_command("go")
+            self.send_command("go -v")
             while True:
                 line = self.process.stdout.readline().strip()
                 print(f"<<< {line}")
