@@ -39,14 +39,10 @@ class UCIEngine:
             if keyword in line:
                 return line
 
-    def get_best_move(self, fen):
+    def get_best_move(self, position_string):
         with self.lock:
-            if(fen == "startpos"):
-                self.send_command(f"position startpos")
-                self.send_command("go")
-            else:
-                self.send_command(f"position fen {fen}")
-                self.send_command("go")
+            self.send_command(f"position {position_string}")
+            self.send_command("go")
             while True:
                 line = self.process.stdout.readline().strip()
                 print(f"<<< {line}")
@@ -67,16 +63,25 @@ def create_app():
     def home():
         return "TigerEngine server is running."
 
-    @app.route('/get_move', methods=['POST'])
     def get_move():
         data = request.get_json()
-        fen = data.get("fen")
+        fen = data.get("fen", "").strip()
+        moves = data.get("moves", "").strip()
 
         if not fen:
             return jsonify({"error": "FEN not provided"}), 400
 
         try:
-            best_move = engine.get_best_move(fen)
+            # Determine whether to use startpos or fen
+            if fen == "startpos":
+                position = "startpos"
+            else:
+                position = f"fen {fen}"
+
+            if moves:
+                position += f" moves {moves}"
+
+            best_move = engine.get_best_move(position)
             return jsonify({"move": best_move})
         except Exception as e:
             return jsonify({"error": str(e)}), 500

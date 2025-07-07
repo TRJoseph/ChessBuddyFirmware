@@ -2,13 +2,30 @@
 #include <string.h>
 #include <Main_Definitions.h>
 #include <boardcontrol.h>
+#include <serverInterface.h>
+
+
+// TODO: move these and movehistory variables into a gamestate.cpp/.h file pair
+char moveHistory[MAX_MOVES][MOVE_LENGTH];
+int moveCount = 0;
+bool calibrationStatus = true;
+bool activeGame = false;
+bool userSideToMove = false;
+
+static std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 struct Square {
-    byte status; // 0=empty, 1=occupied, 2=potentially_captured
-    byte color;  // 0=none, 1=white, 2=black
+    SquareStatus status; // 0=empty, 1=occupied, 2=potentially_captured
+    SquareColor color;  // 0=none, 1=white, 2=black
 };
 
 Square squareStates[64];
+Square currentBoardState[64];
+
+int potentialMovedFromSquare = -1;
+int potentialMovedToSquare = -1;
+int numPiecesPickedUp = 0;
+bool captureMove = false;
 
 // Chess board x,y positions relative to the robotic arm
 // bottom left square is index 0, top right square is index 63
@@ -87,7 +104,6 @@ int SquarePositions[64][2] = {
   {135, 375},
 };
 
-Square currentBoardState[64];
 
 // array of key value pairs for each piece offset
 // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
@@ -99,8 +115,6 @@ KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::Queen, -1940},
     {PieceType::King, -650} // king is good
 };
-
-bool calibrationStatus = false;
 
 
 /* THINGS TO NOTE:
@@ -394,23 +408,27 @@ int getPieceZOffset(PieceType key) {
 }
 
 PieceType stringToPieceType(const String& pieceStr) {
-  if (pieceStr.equalsIgnoreCase("pawn")) {
+  String lowerStr = pieceStr;
+  lowerStr.toLowerCase();
+
+  if (lowerStr.indexOf("0") != -1) {
     return PieceType::Pawn;
-  } else if (pieceStr.equalsIgnoreCase("bishop")) {
+  } else if (lowerStr.indexOf("1") != -1) {
     return PieceType::Bishop;
-  } else if (pieceStr.equalsIgnoreCase("knight")) {
+  } else if (lowerStr.indexOf("2") != -1) {
     return PieceType::Knight;
-  } else if (pieceStr.equalsIgnoreCase("rook") || pieceStr.equalsIgnoreCase("castle")) {
+  } else if (lowerStr.indexOf("3") != -1) {
     return PieceType::Rook;
-  } else if (pieceStr.equalsIgnoreCase("queen")) {
+  } else if (lowerStr.indexOf("4") != -1) {
     return PieceType::Queen;
-  } else if (pieceStr.equalsIgnoreCase("king")) {
+  } else if (lowerStr.indexOf("5") != -1) {
     return PieceType::King;
   } else {
     Serial.println("Error: Invalid piece type.");
-    return PieceType::King;
+    return PieceType::King;  // fallback to king
   }
 }
+
 
 void inverseKinematics(long x, long y) {
   // y motor corresponds to q2
@@ -505,8 +523,8 @@ void editSquareStates(int fromSquare, int toSquare) {
     return;
   }
   Square temp = squareStates[fromSquare];
-  squareStates[fromSquare].status = 0;
-  squareStates[fromSquare].color = 0;
+  squareStates[fromSquare].status = SquareStatus::Empty;
+  squareStates[fromSquare].color = SquareColor::None;
   squareStates[toSquare] = temp;
 }
 
@@ -536,7 +554,7 @@ void processCommand(String input) {
   algebraicToSquares(moveString, fromSquare, toSquare);
 
   if(commandString == "startNewGame") {
-    startNewGame();
+    boardStartNewGame();
   }
 
   // usage: moveToSquare <square> <piecetype>
@@ -599,23 +617,62 @@ void processCommand(String input) {
   
 }
 
+// quick helper function to add a move to the movecount
+void addMove(const char* move) {
+    if (moveCount < MAX_MOVES) {
+        strncpy(moveHistory[moveCount], move, MOVE_LENGTH - 1);
+        moveHistory[moveCount][MOVE_LENGTH - 1] = '\0';
+        moveCount++;
+    }
+}
+
+void handleArmMove(const char* move) {
+  const char delimiter = '|';
+  String tokens[5];
+
+  int tokenCount = splitString(move, delimiter, tokens);
+
+  // moveString should contain a string like "e2e4"
+  String moveString = tokens[0];
+
+  // adds arm move to the movelist
+  addMove(moveString.c_str());
+
+  int fromSquare = 0, toSquare = 0;
+  algebraicToSquares(moveString, fromSquare, toSquare);
+
+  // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
+  if(tokenCount <= 2) {
+    performQuietMove(moveString, stringToPieceType(tokens[1]));
+  }
+
+  editSquareStates(fromSquare, toSquare);
+
+}
+
 void instantiateBoardState() {
   // for all the white pieces
   for (int i = 0; i < 16; i++) {
-    squareStates[i].status = 1;
-    squareStates[i].color = 1;
+    squareStates[i].status = SquareStatus::Occupied;
+    squareStates[i].color = SquareColor::White;
   }
 
   // for all empty middle squares from starting position
   for(int i = 16; i < 48; i++) {
-    squareStates[i].status = 0;
-    squareStates[i].color = 0;
+    squareStates[i].status = SquareStatus::Empty;
+    squareStates[i].color = SquareColor::None;
   }
   
   // for all the black pieces
   for (int i = 48; i < 64; i++) {
-    squareStates[i].status = 1;
-    squareStates[i].color = 2;
+    squareStates[i].status = SquareStatus::Occupied;
+    squareStates[i].color = SquareColor::Black;
+  }
+}
+
+void updateCurrentBoardState() {
+  for (int i = 0; i < 64; i++) {
+    currentBoardState[i] = squareStates[i];
   }
 }
 
@@ -650,13 +707,177 @@ String combineSquareStrings(int fromSquare, int toSquare) {
 }
 
 
+
+void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = false) {
+  // do not poll board if a game is not active
+  if(!activeGame) {
+    return;
+  }
+
+  // do not poll board if it is not the user's turn
+  if(!isUserSideToMove) {
+    return;
+  }
+
+  //updateCurrentBoardState();
+
+  uint64_t binaryBoardState = readShiftRegisters();
+
+  potentialMovedFromSquare = -1;
+  numPiecesPickedUp = 0;
+  potentialMovedToSquare = -1;
+  captureMove = false;
+  //if (!captureMove) potentialMovedToSquare = -1;
+
+
+  // Update board state
+  for (int i = 0; i < 64; i++) {
+    currentBoardState[i].status = (binaryBoardState >> i) & 1 ? SquareStatus::Occupied : SquareStatus::Empty;
+  }
+
+  
+  Serial.print("square states: ");
+  for (int i = numBits - 1; i >= 0; i--) {                                                  
+    Serial.print(squareStates[i].status); // Print each bit
+    if (i % 8 == 0) Serial.print(" ");  // Add space after every 8 bits
+  }
+  Serial.println();
+
+
+  Serial.print("current board state: ");
+  for (int i = numBits - 1; i >= 0; i--) {                                                  
+    Serial.print(currentBoardState[i].status); // Print each bit
+    if (i % 8 == 0) Serial.print(" ");  // Add space after every 8 bits
+  }
+  Serial.println();
+
+  // Detect move
+  for (int i = 0; i < 64; i++) {
+    if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == SquareStatus::Occupied) {
+      if (squareStates[i].color == SquareColor::White) {
+        potentialMovedFromSquare = i + 1;
+        Serial.print("Potential moved from square: ");
+        Serial.println(potentialMovedFromSquare);
+
+        numPiecesPickedUp++;
+      }
+    }
+  }
+
+  // for(int i = 0; i < 64; i++) {
+  //   if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
+  //     if (currentBoardState[i].color == 2) {
+  //       potentialMovedToSquare = i + 1;
+  //       captureMove = true;
+  //       Serial.print("Potential moved to square (capture): ");
+  //       Serial.println(potentialMovedToSquare);
+  //     }
+  //   }
+  // }
+
+  
+  for(int i = 0; i < 64; i++) {
+    if (currentBoardState[i].status == SquareStatus::Occupied && squareStates[i].status == SquareStatus::Empty && !captureMove) {
+      potentialMovedToSquare = i + 1;
+      Serial.print("Potential moved to square (quiet move): ");
+      Serial.println(potentialMovedToSquare);
+    }
+  }
+
+
+  Serial.print("Potential moved from square (before finalization): ");
+  Serial.println(potentialMovedFromSquare);
+
+  Serial.print("Potential moved to square (before finalization)(quiet move): ");
+  Serial.println(potentialMovedToSquare);
+
+  // Check move validity
+  if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
+    Serial.println("ERROR - Retry");
+    return;  // Retry instead of recurse
+  }
+
+  String finalizedMove;
+
+  // Process move (castling or normal)
+  if (numPiecesPickedUp >= 2) {
+    if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
+      // editSquareStates(4, 6);
+      // editSquareStates(7, 5);
+      finalizedMove = combineSquareStrings(5, 7);
+      Serial.println(finalizedMove);
+    } else {
+      // editSquareStates(4, 2);
+      // editSquareStates(0, 3);
+      finalizedMove = combineSquareStrings(5, 3);
+      Serial.println(finalizedMove);
+    }
+  } else {
+    //editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+    finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
+    Serial.println(finalizedMove);
+  }
+
+  // once the move is finalized, edit square states (the user ended their turn) 
+  if(isFinalizedMove) {
+
+
+    editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+
+    addMove(finalizedMove.c_str());
+    moveCount++;
+
+
+    // TODO: extra cases for special moves
+
+    
+  }
+  // addMove(finalizedMove.c_str());
+  // moveCount++;
+}
+
+// void scanningUserMove() {
+//   // do not poll board if a game is not active
+//   if(!activeGame) {
+//     return;
+//   }
+
+//   // do not poll board if it is not the user's turn
+//   if(!userSideToMove) {
+//     return;
+//   }
+
+//   digitalWrite(latchPin, LOW);
+//   delayMicroseconds(5); // Small delay for stability
+//   digitalWrite(latchPin, HIGH);
+//   delayMicroseconds(5);
+
+//   // Read the data from the shift registers
+//   uint64_t boardState = readShiftRegisters();
+//   // Print the board state in binary
+//   Serial.print("Board state: ");
+//   for (int i = numBits - 1; i >= 0; i--) {                                                  
+//     Serial.print((int)(boardState >> i) & 1); // Print each bit
+//     if (i % 8 == 0) Serial.print(" ");  // Add space after every 8 bits
+//   }
+//   Serial.println();
+
+//   delay(1000); // Wait 1 second before reading again
+// //testShiftIn();
+
+//   // addMove(finalizedMove.c_str());
+//   // moveCount++;
+// }
+
+
 void deduceUserMove() {
   bool validMove = false;
+  userSideToMove = true;
   
   // Wait for button to be released (assuming LOW is pressed)
-  while (digitalRead(buttonPin) == LOW) {
-      delay(10); // Small delay to avoid busy-waiting
-  }
+  // while (digitalRead(buttonPin) == LOW) {
+  //     delay(10); // Small delay to avoid busy-waiting
+  // }
     
   while (!validMove) {
     // Copy initial state
@@ -668,8 +889,8 @@ void deduceUserMove() {
     int numPiecesPickedUp = 0;
     bool captureMove = false;
 
-    while (digitalRead(buttonPin) == HIGH) {
-      digitalWrite(ledPin, HIGH); // Turn LED on
+    while (userSideToMove) {
+      //digitalWrite(ledPin, HIGH); // Turn LED on
       uint64_t binaryBoardState = readShiftRegisters();
       delay(50);
       uint64_t stableBoardState = readShiftRegisters();
@@ -681,7 +902,7 @@ void deduceUserMove() {
 
       // Update board state
       for (int i = 0; i < 64; i++) {
-        currentBoardState[i].status = (binaryBoardState >> i) & 1 ? 1 : 0;
+        currentBoardState[i].status = (binaryBoardState >> i) & 1 ? SquareStatus::Occupied : SquareStatus::Empty;
       }
 
       // Detect move
@@ -712,7 +933,7 @@ void deduceUserMove() {
       }
       delay(50);
     }
-    digitalWrite(ledPin, LOW); // Turn LED off
+    //digitalWrite(ledPin, LOW); // Turn LED off
 
     // Check validity
     if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
@@ -721,36 +942,41 @@ void deduceUserMove() {
       continue;  // Retry instead of recurse
     }
     validMove = true;
+    String finalizedMove;
 
     // Process move (castling or normal)
     if (numPiecesPickedUp >= 2) {
       if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
         editSquareStates(4, 6);
         editSquareStates(7, 5);
-        String finalizedMove = combineSquareStrings(5, 7);
+        finalizedMove = combineSquareStrings(5, 7);
         Serial.println(finalizedMove);
       } else {
         editSquareStates(4, 2);
         editSquareStates(0, 3);
-        String finalizedMove = combineSquareStrings(5, 3);
+        finalizedMove = combineSquareStrings(5, 3);
         Serial.println(finalizedMove);
       }
     } else {
       editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
-      String finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
+      finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
       Serial.println(finalizedMove);
     }
+
+    // addMove(finalizedMove.c_str());
+    // moveCount++;
   }
 }
 
 // starts a new chess game
-void startNewGame() {
-  gotoParkPosition();
-  
+void boardStartNewGame() {
+  //gotoParkPosition();
+
+  activeGame = true;
+  // TODO: depending on if user is playing white or black, this might need to change
+  userSideToMove = true;
   instantiateBoardState();
-  //whiteToMove = true;
-  
-  deduceUserMove();
+  updateCurrentBoardState();
 }
 
 void setupBoard() {

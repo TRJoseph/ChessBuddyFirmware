@@ -3,8 +3,22 @@
 
 #include <Arduino.h>
 
+
+#define MAX_MOVES 200
+#define MOVE_LENGTH 5
+
+
 // holding current status of calibration
 extern bool calibrationStatus;
+
+// true if it is the user's side to move, else robot's turn
+extern bool userSideToMove;
+
+// true if a game has started
+extern bool activeGame;
+
+extern char moveHistory[MAX_MOVES][MOVE_LENGTH];
+extern int moveCount;
 
 enum class SpecialMove {
     None,
@@ -21,6 +35,18 @@ enum class PieceType {
     Rook,
     Queen,
     King
+};
+
+enum SquareStatus {
+    Empty,
+    Occupied,
+    Potentially_Captured
+};
+
+enum SquareColor {
+    None,
+    White,
+    Black
 };
 
 struct KeyValuePair {
@@ -46,12 +72,15 @@ int splitString(String input, char delimiter, String outputArray[]);
 void editSquareStates(int fromSquare, int toSquare);
 void algebraicToSquares(const String& move, int& fromSquare, int& toSquare);
 void processCommand(String input);
+void handleArmMove(const char* move);
 void instantiateBoardState();
+void updateCurrentBoardState();
 uint64_t readShiftRegisters();
 String squareNumToAlgebraic(int square);
 String combineSquareStrings(int fromSquare, int toSquare);
+void scanningUserMove(bool isUserSideToMove, bool isFinalizedMove);
 void deduceUserMove();
-void startNewGame();
+void boardStartNewGame();
 void setupBoard();
 
 #endif

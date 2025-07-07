@@ -4,6 +4,7 @@
 #include "User_Setup.h"
 #include "wlan.h"
 #include <stack>
+#include <serverInterface.h>
 
 // Misc Image Includes
 #include "main_logo.h"
@@ -1158,6 +1159,9 @@ void start_game_btn_handler(lv_event_t * e)
         if(calibrationStatus == true) {
             setup_active_game_screen();
             switch_to_screen(active_game_screen);
+
+            // initialize the board for a game to start
+            boardStartNewGame();
         } else {
             calibration_handler_popup();
         }
@@ -1251,6 +1255,14 @@ void end_turn_btn_handler(lv_event_t * e)
         // pause the user timer and start the computer's clock
         lv_timer_pause(user_timer);
         lv_timer_resume(computer_timer);
+        
+        // swap to computer move
+        userSideToMove = false;
+
+        // scan last time to get finalized move
+        scanningUserMove(true, true);
+
+        getBestMoveFromServer();
     }
 }
 
@@ -1266,11 +1278,14 @@ void end_engine_turn_handler() {
     // pause the user timer and start the computer's clock
     lv_timer_pause(computer_timer);
     lv_timer_resume(user_timer);
+
+    // swap back to user turn to move
+    userSideToMove = true;
 }
 
 void end_game_button_handler(lv_event_t * e) {
     // TODO: clear the stack if this will switch you back to start screen, else dont
-
+    activeGame = false;
     switch_to_screen(start_screen);
 }
 
@@ -1291,9 +1306,6 @@ void set_active_game_state() {
         lv_timer_del(computer_timer);
         computer_timer = NULL;
     }
-
-    // TODO: DO CONDITIONAL CHECK HERE TO CHECK IF ARM IS CALIBRATED FIRST, IF SO, PROCEED TO GAME STATE, IF NOT, PROMPT USER TO CALIBRATE
-    // runCalibrationRoutine();
 
 }
 

@@ -73,5 +73,5 @@ void setup()
 void loop()
 {
     lv_timer_handler(); /* let the GUI do its work */
-    delay(5); /* let this time pass */
+    scanningUserMove(userSideToMove, false);
 }
