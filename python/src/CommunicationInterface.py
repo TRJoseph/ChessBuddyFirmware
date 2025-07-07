@@ -63,6 +63,7 @@ def create_app():
     def home():
         return "TigerEngine server is running."
 
+    @app.route('/get_move', methods=['POST'])
     def get_move():
         data = request.get_json()
         fen = data.get("fen", "").strip()
