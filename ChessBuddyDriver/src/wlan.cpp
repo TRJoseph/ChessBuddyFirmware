@@ -16,6 +16,8 @@ unsigned long scanStartTime = 0;
 int max_attempts = 10;
 int attempt = 1;
 
+int failedScans = 0;
+
 
 void setup_preferences() {
 
@@ -289,11 +291,13 @@ void processWifiState(lv_timer_t * timer) {
       } else if (scanResult == WIFI_SCAN_FAILED) {
         // Scan failed
         Serial.println("WiFi scan failed");
-             
-        // Update UI to show failed connection
-        updateWifiWidget(WL_CONNECT_FAILED);
+        if(failedScans >=5) {
+          // Update UI to show failed connection
+          updateWifiWidget(WL_CONNECT_FAILED);
 
-        lv_timer_del(timer);
+          lv_timer_del(timer);
+        }
+        failedScans++;
       }
       else if (millis() - scanStartTime > 15000) {
         // Timeout after 15 seconds
@@ -375,6 +379,7 @@ void startWifiScan() {
       debugCurrentWifiStatus();
 
       scanStartTime = millis();
+      failedScans = 0;
       
       //Free previous results if they exist
       if (networksList != NULL) {
