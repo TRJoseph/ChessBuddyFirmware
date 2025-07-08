@@ -420,22 +420,52 @@ int getPieceZOffset(PieceType key) {
     return -1;  // return -1 if the key is not found 
 }
 
-PieceType stringToPieceType(const char* pieceStr) {
-  if (strchr(pieceStr, '0') != nullptr) {
+// PieceType stringToPieceType(const char* pieceStr) {
+//   if (strchr(pieceStr, '0') != nullptr) {
+//     return PieceType::Pawn;
+//   } else if (strchr(pieceStr, '1') != nullptr) {
+//     return PieceType::Bishop;
+//   } else if (strchr(pieceStr, '2') != nullptr) {
+//     return PieceType::Knight;
+//   } else if (strchr(pieceStr, '3') != nullptr) {
+//     return PieceType::Rook;
+//   } else if (strchr(pieceStr, '4') != nullptr) {
+//     return PieceType::Queen;
+//   } else if (strchr(pieceStr, '5') != nullptr) {
+//     return PieceType::King;
+//   } else {
+//     Serial.println("Error: Invalid piece type.");
+//     return PieceType::King;  // fallback to King
+//   }
+// }
+
+PieceType stringToPieceType(const String& pieceStr) {
+  if (pieceStr.equalsIgnoreCase("pawn")) {
+  String lowerStr = pieceStr;
+  lowerStr.toLowerCase();
+
+  if (lowerStr.indexOf("0") != -1) {
     return PieceType::Pawn;
-  } else if (strchr(pieceStr, '1') != nullptr) {
+  } else if (pieceStr.equalsIgnoreCase("bishop")) {
+  } else if (lowerStr.indexOf("1") != -1) {
     return PieceType::Bishop;
-  } else if (strchr(pieceStr, '2') != nullptr) {
+  } else if (pieceStr.equalsIgnoreCase("knight")) {
+  } else if (lowerStr.indexOf("2") != -1) {
     return PieceType::Knight;
-  } else if (strchr(pieceStr, '3') != nullptr) {
+  } else if (pieceStr.equalsIgnoreCase("rook") || pieceStr.equalsIgnoreCase("castle")) {
+  } else if (lowerStr.indexOf("3") != -1) {
     return PieceType::Rook;
-  } else if (strchr(pieceStr, '4') != nullptr) {
+  } else if (pieceStr.equalsIgnoreCase("queen")) {
+  } else if (lowerStr.indexOf("4") != -1) {
     return PieceType::Queen;
-  } else if (strchr(pieceStr, '5') != nullptr) {
+  } else if (pieceStr.equalsIgnoreCase("king")) {
+  } else if (lowerStr.indexOf("5") != -1) {
     return PieceType::King;
   } else {
     Serial.println("Error: Invalid piece type.");
-    return PieceType::King;  // fallback to King
+    return PieceType::King;
+    return PieceType::King;  // fallback to king
+  }
   }
 }
 
@@ -540,7 +570,7 @@ void editSquareStates(int fromSquare, int toSquare) {
   squareStates[toSquare] = temp;
 }
 
-void algebraicToSquares(char move[], uint8_t& fromSquare, uint8_t& toSquare) {
+void algebraicToSquares(const String& move, int& fromSquare, int& toSquare) {
   char fromFile = move[0];
   char fromRank = move[1];
   char toFile = move[2];
@@ -638,30 +668,90 @@ void addMove(const char* move) {
     }
 }
 
+void clearMoveHistory() {
+    for (int i = 0; i < moveCount; i++) {
+        moveHistory[i][0] = '\0';  // Clear each move string
+    }
+    moveCount = 0;  // Reset the move counter
+}
+
+// void handleArmMove(const char* move) {
+//   const char delimiter = '|';
+//   char tokens[5][10];
+
+//   uint8_t tokenCount = splitString(move, delimiter, tokens);
+
+//   // moveString should contain a string like "e2e4"
+//   char moveString[5];
+
+//   strcpy(moveString, tokens[0]);
+
+//   char moveType[14];
+//   strcpy(moveString, tokens[1]);
+
+//   // adds arm move to the movelist
+//   addMove(moveString);
+
+//   uint8_t fromSquare = 0, toSquare = 0;
+//   algebraicToSquares(moveString, fromSquare, toSquare);
+
+//   // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
+//   if(tokenCount <= 2) {
+//     performQuietMove(moveString, stringToPieceType(moveType));
+//   }
+
+//   editSquareStates(fromSquare, toSquare);
+
+
+//   end_engine_turn_handler();
+// }
+
+int splitString(String input, char delimiter, String outputArray[]) {
+  int tokenIndex = 0;
+  int startIndex = 0;
+  int delimiterIndex = input.indexOf(delimiter);
+
+  while (delimiterIndex != -1) {
+    outputArray[tokenIndex++] = input.substring(startIndex, delimiterIndex);
+    startIndex = delimiterIndex + 1;
+    delimiterIndex = input.indexOf(delimiter, startIndex);
+    // avoids exceeding the array size
+    if (tokenIndex >= 5) break;
+
+  }
+  outputArray[tokenIndex++] = input.substring(startIndex);
+  return tokenIndex; 
+}
+
+void printMoveHistory() {
+  Serial.println("Move History:");
+  for (int i = 0; i < moveCount; i++) {
+    Serial.print(i + 1);
+    Serial.print(": ");
+    Serial.println(moveHistory[i]);
+  }
+}
+
+
 void handleArmMove(const char* move) {
   const char delimiter = '|';
-  char tokens[5][10];
 
-  uint8_t tokenCount = splitString(move, delimiter, tokens);
-
+  String tokens[5];
+  int tokenCount = splitString(move, delimiter, tokens);
   // moveString should contain a string like "e2e4"
-  char moveString[5];
-
-  strcpy(moveString, tokens[0]);
-
+  String moveString = tokens[0];
   // adds arm move to the movelist
-  addMove(moveString);
 
-  uint8_t fromSquare = 0, toSquare = 0;
+  int fromSquare = 0, toSquare = 0;
   algebraicToSquares(moveString, fromSquare, toSquare);
 
   // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
   if(tokenCount <= 2) {
+    addMove(moveString.c_str());
     performQuietMove(moveString, stringToPieceType(tokens[1]));
   }
 
   editSquareStates(fromSquare, toSquare);
-
 
   end_engine_turn_handler();
 }
@@ -839,7 +929,7 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
 
   String finalizedMove;
 
-  // Process move (castling or normal)
+  // DEBUGGING INFO TODO: REFACTOR LATER
   if (numPiecesPickedUp >= 2) {
     if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
       // editSquareStates(4, 6);
@@ -861,54 +951,34 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
   // once the move is finalized, edit square states (the user ended their turn) 
   if(isFinalizedMove) {
 
-
-    editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+    // Process move (castling or normal)
+    if (numPiecesPickedUp >= 2) {
+      if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
+        editSquareStates(4, 6);
+        editSquareStates(7, 5);
+        finalizedMove = combineSquareStrings(5, 7);
+        Serial.println(finalizedMove);
+      } else {
+        editSquareStates(4, 2);
+        editSquareStates(0, 3);
+        finalizedMove = combineSquareStrings(5, 3);
+        Serial.println(finalizedMove);
+      }
+    } else {
+      editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+      finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
+      Serial.println(finalizedMove);
+    }
 
     addMove(finalizedMove.c_str());
-    moveCount++;
 
 
     // TODO: extra cases for special moves
-
-    
   }
+
+
   // addMove(finalizedMove.c_str());
-  // moveCount++;
 }
-
-// void scanningUserMove() {
-//   // do not poll board if a game is not active
-//   if(!activeGame) {
-//     return;
-//   }
-
-//   // do not poll board if it is not the user's turn
-//   if(!userSideToMove) {
-//     return;
-//   }
-
-//   digitalWrite(latchPin, LOW);
-//   delayMicroseconds(5); // Small delay for stability
-//   digitalWrite(latchPin, HIGH);
-//   delayMicroseconds(5);
-
-//   // Read the data from the shift registers
-//   uint64_t boardState = readShiftRegisters();
-//   // Print the board state in binary
-//   Serial.print("Board state: ");
-//   for (int i = numBits - 1; i >= 0; i--) {                                                  
-//     Serial.print((int)(boardState >> i) & 1); // Print each bit
-//     if (i % 8 == 0) Serial.print(" ");  // Add space after every 8 bits
-//   }
-//   Serial.println();
-
-//   delay(1000); // Wait 1 second before reading again
-// //testShiftIn();
-
-//   // addMove(finalizedMove.c_str());
-//   // moveCount++;
-// }
-
 
 void deduceUserMove() {
   bool validMove = false;
@@ -1012,6 +1082,8 @@ void deduceUserMove() {
 void boardStartNewGame() {
   //gotoParkPosition();
 
+  clearMoveHistory();
+  moveCount = 0;
   activeGame = true;
   // TODO: depending on if user is playing white or black, this might need to change
   userSideToMove = true;

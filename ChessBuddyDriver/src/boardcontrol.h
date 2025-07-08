@@ -5,7 +5,7 @@
 
 
 #define MAX_MOVES 200
-#define MOVE_LENGTH 5
+#define MOVE_LENGTH 6
 
 
 // holding current status of calibration
@@ -87,6 +87,7 @@ String squareNumToAlgebraic(int square);
 String combineSquareStrings(int fromSquare, int toSquare);
 void scanningUserMove(bool isUserSideToMove, bool isFinalizedMove);
 void deduceUserMove();
+void printMoveHistory();
 void boardStartNewGame();
 void setupBoard();
 

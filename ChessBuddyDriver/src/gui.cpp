@@ -1257,23 +1257,27 @@ void end_turn_btn_handler(lv_event_t * e)
         lv_timer_pause(user_timer);
         lv_timer_resume(computer_timer);
         
+
         // swap to computer move
         userSideToMove = false;
 
         // scan last time to get finalized move
         scanningUserMove(true, true);
 
+        printMoveHistory();
+
         resetPieceDetectionParameters();
 
-        // non-blocking task for the http request to get a move
-        xTaskCreate(
-            getBestMoveTask,   
-            "GetBestMoveTask", 
-            12288,              
-            NULL,              
-            1,                
-            NULL 
-        );
+        // // non-blocking task for the http request to get a move
+        // xTaskCreate(
+        //     getBestMoveTask,   
+        //     "GetBestMoveTask", 
+        //     32768,              
+        //     NULL,              
+        //     1,                
+        //     NULL 
+        // );
+        getBestMoveFromServer();
     }
 }
 
@@ -1290,7 +1294,10 @@ void end_engine_turn_handler() {
     lv_timer_pause(computer_timer);
     lv_timer_resume(user_timer);
 
-    // swap back to user turn to move
+    printMoveHistory();
+
+    // swap back to user turn to move   
+    resetPieceDetectionParameters();
     userSideToMove = true;
 }
 
