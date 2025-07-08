@@ -4,6 +4,7 @@
 #include <boardcontrol.h>
 #include <serverInterface.h>
 #include <gui.h>
+#include <gui_gateway.h>
 
 
 // TODO: move these and movehistory variables into a gamestate.cpp/.h file pair
@@ -170,7 +171,7 @@ public:
         // reset speed and accel settings
         setNormalMotorSettings();
 
-        delay(2000);
+        delay(500);
     }
 
     
@@ -187,9 +188,9 @@ public:
 };
 
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed, 1000, baseStepperSpeed / 8, 1000);
-StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed * 4, 2500, 1000, 1000);
-StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 5, 10000, baseStepperSpeed, 1000); 
+StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
+StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
+StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
 
 //AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
 //AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
@@ -216,16 +217,13 @@ void runCalibrationRoutine() {
   zStepperMotor.calibrate(zLimitPin);
   zStepperMotor.moveTo(11000);
   xStepperMotor.moveTo(729);
-
-  xStepperMotor.setNormalMotorSettings();
-  yStepperMotor.setNormalMotorSettings();
   
   xStepperMotor.motor.setCurrentPosition(0);
   yStepperMotor.motor.setCurrentPosition(0);
   zStepperMotor.motor.setCurrentPosition(0);
 
-  calibrationStatus = true;
   gotoParkPosition();
+  calibrationStatus = true;
 }
 
 void gotoParkPosition() {
@@ -486,6 +484,23 @@ void inverseKinematics(long x, long y) {
   Serial.print("actual Y Steps: ");
   Serial.println(ySteps);
 
+    // Compute absolute step magnitudes
+  long xAbsSteps = abs(xSteps);
+  long yAbsSteps = abs(ySteps);
+  long maxSteps = max(xAbsSteps, yAbsSteps);
+
+  if(maxSteps == 0) {
+    return;
+  }
+
+  // Scale each motor's speed to its share of the move
+  float xSpeed = baseStepperSpeed * ((float)xAbsSteps / maxSteps);
+  float ySpeed = baseStepperSpeed * ((float)yAbsSteps / maxSteps);
+  xStepperMotor.motor.setMaxSpeed(xSpeed);
+  yStepperMotor.motor.setMaxSpeed(ySpeed);
+
+  xStepperMotor.motor.setAcceleration(xSpeed * baseStepperAccelScalar);
+  yStepperMotor.motor.setAcceleration(ySpeed * baseStepperAccelScalar);
 
   xStepperMotor.moveToNoRun(xSteps);
   yStepperMotor.moveToNoRun(ySteps);
@@ -761,7 +776,13 @@ void handleArmMove(const char* move) {
 
   editSquareStates(fromSquareIndex, toSquareIndex);
 
-  end_engine_turn_handler();
+  printMoveHistory();
+
+  // swap back to user turn to move   
+  resetPieceDetectionParameters();
+  userSideToMove = true;
+
+  request_end_engine_turn();
 }
 
 void instantiateBoardState() {

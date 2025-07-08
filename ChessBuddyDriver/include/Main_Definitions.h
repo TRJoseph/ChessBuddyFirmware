@@ -67,8 +67,9 @@ constexpr double BaseGearReductionRatio = 5.5;
 constexpr double ArmGearReductionRatio = 22;
 
 // default config for stepper motors
-constexpr float baseStepperSpeed = 1000.0;
+constexpr float baseStepperSpeed = 2000.0;
 constexpr float baseStepperAccel = 50.0;
+constexpr float baseStepperAccelScalar = 2.5;
 
 
 #endif
