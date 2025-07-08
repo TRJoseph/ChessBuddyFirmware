@@ -233,11 +233,11 @@ void gotoParkPosition() {
   inverseKinematics(-100, 0);
 }
 
-int* getSquarePosition(const String& square) {
+int* getSquarePosition(char square[]) {
     // maps the square identifiers to their corresponding array indices
     int index = 0;
-    char file = square.charAt(0); // 'a' to 'h'
-    char rank = square.charAt(1); // '1' to '8'
+    char file = square[0]; // 'a' to 'h'
+    char rank = square[1]; // '1' to '8'
 
     // NOTE: this is for the robot playing from black's perspective
     // flip the file so 'a' -> 7, 'b' -> 6, ..., 'h' -> 0
@@ -257,16 +257,9 @@ int* getSquarePosition(const String& square) {
 
 // a quiet move in chess is defined as a move that does not change the current material on the board (not a capture move)
 // if no special move was performed assume its quiet
-void performQuietMove(String moveString, PieceType pieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
-
-  size_t length = moveString.length();
-  size_t midpoint = length / 2;
-
-  int pieceZOffset = getPieceZOffset(pieceType);
+void performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
   
-  // split the move string into two individual squares
-  String fromSquare = moveString.substring(0, midpoint);
-  String toSquare = moveString.substring(midpoint);  
+  int pieceZOffset = getPieceZOffset(pieceType);
 
   moveToSquare(fromSquare);
 
@@ -274,8 +267,8 @@ void performQuietMove(String moveString, PieceType pieceType = PieceType::King, 
   zStepperMotor.moveTo(pieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
 
-  // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-  zStepperMotor.moveTo(8200 + pieceZOffset);
+  // TODO: THIS MAY NEED TO BE TWEAKED FURTHER, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
+  zStepperMotor.moveTo(8300 + pieceZOffset);
 
   moveToSquare(toSquare);
 
@@ -361,49 +354,49 @@ void performQueenSideCastle(String moveString) {
 }
 
 // special move here could be for en passant or a capture promotion move
-void performCaptureMove(String moveString, PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
-  size_t length = moveString.length();
-  size_t midpoint = length / 2;
+// void performCaptureMove(String moveString, PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
+//   size_t length = moveString.length();
+//   size_t midpoint = length / 2;
 
-  int pieceZOffset = getPieceZOffset(pieceType);
-  int capturedPieceZOffset = getPieceZOffset(capturedPieceType);
+//   int pieceZOffset = getPieceZOffset(pieceType);
+//   int capturedPieceZOffset = getPieceZOffset(capturedPieceType);
   
-  // split the move string into two individual squares
-  String fromSquare = moveString.substring(0, midpoint);
-  String toSquare = moveString.substring(midpoint);  
+//   // split the move string into two individual squares
+//   String fromSquare = moveString.substring(0, midpoint);
+//   String toSquare = moveString.substring(midpoint);  
 
-  // extra steps for capture, we need to visit the "to square" first
-  moveToSquare(toSquare);
+//   // extra steps for capture, we need to visit the "to square" first
+//   moveToSquare(toSquare);
 
-  //move down and trigger magnet high
-  zStepperMotor.moveTo(capturedPieceZOffset);
-  digitalWrite(electromagnetPin, HIGH);
-  zStepperMotor.moveTo(8200 + capturedPieceZOffset);
-  // go to park position to drop off captured piece
-  gotoParkPosition();
+//   //move down and trigger magnet high
+//   zStepperMotor.moveTo(capturedPieceZOffset);
+//   digitalWrite(electromagnetPin, HIGH);
+//   zStepperMotor.moveTo(8200 + capturedPieceZOffset);
+//   // go to park position to drop off captured piece
+//   gotoParkPosition();
   
-  //zStepperMotor.moveTo(5500);
-  digitalWrite(electromagnetPin, LOW);
-  //zStepperMotor.moveTo(0);
+//   //zStepperMotor.moveTo(5500);
+//   digitalWrite(electromagnetPin, LOW);
+//   //zStepperMotor.moveTo(0);
 
-  moveToSquare(fromSquare);
+//   moveToSquare(fromSquare);
 
-  //move down and trigger magnet high
-  zStepperMotor.moveTo(pieceZOffset);
-  digitalWrite(electromagnetPin, HIGH);
+//   //move down and trigger magnet high
+//   zStepperMotor.moveTo(pieceZOffset);
+//   digitalWrite(electromagnetPin, HIGH);
 
-  zStepperMotor.moveTo(8000 + pieceZOffset);
+//   zStepperMotor.moveTo(8000 + pieceZOffset);
 
-  moveToSquare(toSquare);
+//   moveToSquare(toSquare);
 
-  zStepperMotor.moveTo(pieceZOffset);
-  digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5500);
+//   zStepperMotor.moveTo(pieceZOffset);
+//   digitalWrite(electromagnetPin, LOW);
+//   zStepperMotor.moveTo(5500);
 
-  gotoParkPosition();
-}
+//   gotoParkPosition();
+// }
 
-void moveToSquare(const String& square) {
+void moveToSquare(char square[]) {
   int* position = getSquarePosition(square);
   if (position != nullptr) {
       inverseKinematics(position[0], position[1]);
@@ -420,55 +413,24 @@ int getPieceZOffset(PieceType key) {
     return -1;  // return -1 if the key is not found 
 }
 
-// PieceType stringToPieceType(const char* pieceStr) {
-//   if (strchr(pieceStr, '0') != nullptr) {
-//     return PieceType::Pawn;
-//   } else if (strchr(pieceStr, '1') != nullptr) {
-//     return PieceType::Bishop;
-//   } else if (strchr(pieceStr, '2') != nullptr) {
-//     return PieceType::Knight;
-//   } else if (strchr(pieceStr, '3') != nullptr) {
-//     return PieceType::Rook;
-//   } else if (strchr(pieceStr, '4') != nullptr) {
-//     return PieceType::Queen;
-//   } else if (strchr(pieceStr, '5') != nullptr) {
-//     return PieceType::King;
-//   } else {
-//     Serial.println("Error: Invalid piece type.");
-//     return PieceType::King;  // fallback to King
-//   }
-// }
-
-PieceType stringToPieceType(const String& pieceStr) {
-  if (pieceStr.equalsIgnoreCase("pawn")) {
-  String lowerStr = pieceStr;
-  lowerStr.toLowerCase();
-
-  if (lowerStr.indexOf("0") != -1) {
+PieceType stringToPieceType(const char* pieceStr) {
+  if (strchr(pieceStr, '0') != nullptr) {
     return PieceType::Pawn;
-  } else if (pieceStr.equalsIgnoreCase("bishop")) {
-  } else if (lowerStr.indexOf("1") != -1) {
+  } else if (strchr(pieceStr, '1') != nullptr) {
     return PieceType::Bishop;
-  } else if (pieceStr.equalsIgnoreCase("knight")) {
-  } else if (lowerStr.indexOf("2") != -1) {
+  } else if (strchr(pieceStr, '2') != nullptr) {
     return PieceType::Knight;
-  } else if (pieceStr.equalsIgnoreCase("rook") || pieceStr.equalsIgnoreCase("castle")) {
-  } else if (lowerStr.indexOf("3") != -1) {
+  } else if (strchr(pieceStr, '3') != nullptr) {
     return PieceType::Rook;
-  } else if (pieceStr.equalsIgnoreCase("queen")) {
-  } else if (lowerStr.indexOf("4") != -1) {
+  } else if (strchr(pieceStr, '4') != nullptr) {
     return PieceType::Queen;
-  } else if (pieceStr.equalsIgnoreCase("king")) {
-  } else if (lowerStr.indexOf("5") != -1) {
+  } else if (strchr(pieceStr, '5') != nullptr) {
     return PieceType::King;
   } else {
     Serial.println("Error: Invalid piece type.");
-    return PieceType::King;
-    return PieceType::King;  // fallback to king
-  }
+    return PieceType::King;  // fallback to King
   }
 }
-
 
 void inverseKinematics(long x, long y) {
   // y motor corresponds to q2
@@ -536,7 +498,7 @@ void inverseKinematics(long x, long y) {
   }
 }
 
-uint8_t splitString(const char* input, char delimiter, char tokens[][10], uint8_t maxTokens = 5) {
+uint8_t splitString(const char* input, char delimiter, char tokens[][28], uint8_t maxTokens = 5) {
   uint8_t tokenIndex = 0;
   uint8_t charIndex = 0;
 
@@ -545,7 +507,7 @@ uint8_t splitString(const char* input, char delimiter, char tokens[][10], uint8_
       tokens[tokenIndex][charIndex] = '\0';
       tokenIndex++;
       charIndex = 0;
-    } else if (charIndex < 9) {
+    } else if (charIndex < 27) {
       tokens[tokenIndex][charIndex++] = *input;
     }
     input++;
@@ -559,7 +521,7 @@ uint8_t splitString(const char* input, char delimiter, char tokens[][10], uint8_
 /* this function edits the square state board to reflect the engine move */
 // TODO: THIS WILL NEED EDITS FOR DIFFERENT MOVE TYPES LIKE CASTLING, EN PASSANT, AND PROMOTIONS
 // should be totally functional for quiet moves and capture moves
-void editSquareStates(int fromSquare, int toSquare) {
+void editSquareStates(uint8_t fromSquare, uint8_t toSquare) {
   if (fromSquare < 0 || fromSquare > 63 || toSquare < 0 || toSquare > 63) {
     Serial.println("Error: Square index out of bounds");
     return;
@@ -570,7 +532,7 @@ void editSquareStates(int fromSquare, int toSquare) {
   squareStates[toSquare] = temp;
 }
 
-void algebraicToSquares(const String& move, int& fromSquare, int& toSquare) {
+void algebraicToSquares(const char move[], uint8_t& fromSquare, uint8_t& toSquare) {
   char fromFile = move[0];
   char fromRank = move[1];
   char toFile = move[2];
@@ -580,84 +542,83 @@ void algebraicToSquares(const String& move, int& fromSquare, int& toSquare) {
   toSquare = ((toRank - '1') * 8) + (toFile - 'a');
 }
 
-void processCommand(String input) {
-  const char delimiter = ' ';
-  String tokens[5];
+// void processCommand(String input) {
+//   const char delimiter = ' ';
+//   String tokens[5];
 
-  int tokenCount = splitString(input, delimiter, tokens);
+//   int tokenCount = splitString(input, delimiter, tokens);
 
-  // commandString in the future will be things such as "doquietmove" or "docastlingmove" or "docapturemove"
-  String commandString = tokens[0];
+//   // commandString in the future will be things such as "doquietmove" or "docastlingmove" or "docapturemove"
+//   String commandString = tokens[0];
 
-  // moveString should contain a string like "e2e4"
-  String moveString = tokens[1];
+//   // moveString should contain a string like "e2e4"
+//   String moveString = tokens[1];
 
-  int fromSquare = 0, toSquare = 0;
-  algebraicToSquares(moveString, fromSquare, toSquare);
+//   int fromSquare = 0, toSquare = 0;
+//   algebraicToSquares(moveString, fromSquare, toSquare);
 
-  if(commandString == "startNewGame") {
-    boardStartNewGame();
-  }
+//   if(commandString == "startNewGame") {
+//     boardStartNewGame();
+//   }
 
-  // usage: moveToSquare <square> <piecetype>
-  if(commandString == "moveToSquare") {
-    if (moveString.length() > 0) {
-        PieceType pieceType = stringToPieceType(tokens[2]);
-        int pieceZOffset = getPieceZOffset(pieceType);
-        moveToSquare(moveString);
+//   // usage: moveToSquare <square> <piecetype>
+//   if(commandString == "moveToSquare") {
+//     if (moveString.length() > 0) {
+//         PieceType pieceType = stringToPieceType(tokens[2]);
+//         int pieceZOffset = getPieceZOffset(pieceType);
+//         moveToSquare(moveString);
 
-         //move down and trigger magnet high
-        zStepperMotor.moveTo(pieceZOffset);
-        digitalWrite(electromagnetPin, HIGH);
+//          //move down and trigger magnet high
+//         zStepperMotor.moveTo(pieceZOffset);
+//         digitalWrite(electromagnetPin, HIGH);
       
-        // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-        zStepperMotor.moveTo(7000 + pieceZOffset);
-        Serial.println("Moved to square: " + moveString);
-      } else {
-        Serial.println("Error: MOVE command requires an argument.");
-      }
-  }
+//         // TODO: THIS "6000" NEEDS TO BE TWEAKED, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
+//         zStepperMotor.moveTo(7000 + pieceZOffset);
+//         Serial.println("Moved to square: " + moveString);
+//       } else {
+//         Serial.println("Error: MOVE command requires an argument.");
+//       }
+//   }
 
-  if(commandString == "doquietmove") {
-    if (moveString.length() > 0) {
-        performQuietMove(moveString, stringToPieceType(tokens[2]));
-        Serial.println("Executed move: " + moveString);
-      } else {
-        Serial.println("Error: MOVE command requires an argument.");
-      }
-    // switch back to user's move
-    editSquareStates(fromSquare, toSquare);
-    deduceUserMove();
-  }
-  if(commandString == "docapturemove") {
-    if (moveString.length() > 0) {
-        // the tokens should go as follows, example: e3d4 pawn queen. This means a pawn captured a queen on d4 from d3
-        performCaptureMove(moveString, stringToPieceType(tokens[2]), stringToPieceType(tokens[3]));
-        Serial.println("Executed move: " + moveString);
-      } else {
-        //Serial.println("Error: MOVE command requires an argument.");
-      }
+//   if(commandString == "doquietmove") {
+//     if (moveString.length() > 0) {
+//         performQuietMove(moveString, stringToPieceType(tokens[2]));
+//         Serial.println("Executed move: " + moveString);
+//       } else {
+//         Serial.println("Error: MOVE command requires an argument.");
+//       }
+//     // switch back to user's move
+//     editSquareStates(fromSquare, toSquare);
+//     deduceUserMove();
+//   }
+//   if(commandString == "docapturemove") {
+//     if (moveString.length() > 0) {
+//         // the tokens should go as follows, example: e3d4 pawn queen. This means a pawn captured a queen on d4 from d3
+//         performCaptureMove(moveString, stringToPieceType(tokens[2]), stringToPieceType(tokens[3]));
+//         Serial.println("Executed move: " + moveString);
+//       } else {
+//         //Serial.println("Error: MOVE command requires an argument.");
+//       }
 
-    // switch back to user's move
-    editSquareStates(fromSquare, toSquare);
-    deduceUserMove();
-  }
+//     // switch back to user's move
+//     editSquareStates(fromSquare, toSquare);
+//     deduceUserMove();
+//   }
 
-  if(commandString == "dokingsidecastle") {
-    performKingSideCastle(moveString);
-    editSquareStates(61, 63);
-    editSquareStates(64, 62);
-    deduceUserMove();
-  }
+//   if(commandString == "dokingsidecastle") {
+//     performKingSideCastle(moveString);
+//     editSquareStates(61, 63);
+//     editSquareStates(64, 62);
+//     deduceUserMove();
+//   }
 
-  if(commandString == "doqueensidecastle") {
-    performQueenSideCastle(moveString);
-    editSquareStates(61, 59);
-    editSquareStates(57, 60);
-    deduceUserMove();
-  }
-  
-}
+//   if(commandString == "doqueensidecastle") {
+//     performQueenSideCastle(moveString);
+//     editSquareStates(61, 59);
+//     editSquareStates(57, 60);
+//     deduceUserMove();
+//   }
+// }
 
 // quick helper function to add a move to the movecount
 void addMove(const char* move) {
@@ -735,23 +696,70 @@ void printMoveHistory() {
 
 void handleArmMove(const char* move) {
   const char delimiter = '|';
+  char tokens[5][28];
 
-  String tokens[5];
-  int tokenCount = splitString(move, delimiter, tokens);
-  // moveString should contain a string like "e2e4"
-  String moveString = tokens[0];
+  uint8_t tokenCount = splitString(move, delimiter, tokens);
+
+  // moveString (first tokens slot) should contain a string like "e2e4"
+  char moveString[6];
+  strcpy(moveString, tokens[0]);
+
+  uint8_t fromSquareIndex = 0, toSquareIndex = 0;
+  algebraicToSquares(moveString, fromSquareIndex, toSquareIndex);
+
+  size_t length = strlen(moveString);
+  size_t midpoint = length / 2;
+
+  // split the move string into two individual squares
+  char fromSquare[3];
+  char toSquare[3];
+  char promotionChar = NULL;
+
+  strncpy(fromSquare, moveString, midpoint);
+  fromSquare[2] = '\0';
+
+  char* midpointPtr = &(moveString[midpoint]);
+  strncpy(toSquare, midpointPtr, 2);
+  toSquare[2] = '\0';
+
+
   // adds arm move to the movelist
-
-  int fromSquare = 0, toSquare = 0;
-  algebraicToSquares(moveString, fromSquare, toSquare);
-
   // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
   if(tokenCount <= 2) {
-    addMove(moveString.c_str());
-    performQuietMove(moveString, stringToPieceType(tokens[1]));
+    addMove(moveString);
+    performQuietMove(fromSquare, toSquare, stringToPieceType(tokens[1]));
+  } else {
+    int8_t specialMoveTokenIndex = -1;
+    int8_t capturedPieceTokenIndex = -1;
+    int8_t promotionTokenIndex = -1;
+
+    for(int i = 0; i < 5; i++) {
+      if(strstr(tokens[i], "capturedPiece") != nullptr) {
+        capturedPieceTokenIndex = i;
+      }
+      if(strstr(tokens[i], "specialMove") != nullptr) {
+        specialMoveTokenIndex = i;
+      }
+      if(strstr(tokens[i], "promotion") != nullptr) {
+        promotionTokenIndex = i;
+      }
+    }
+
+    // handle these other move scenarios
+    if(capturedPieceTokenIndex != -1) {
+      // perform capture move
+    }
+
+    if(specialMoveTokenIndex != -1) {
+      // perform special moves
+    }
+
+    if(promotionTokenIndex != -1) {
+      // do promotions
+    }
   }
 
-  editSquareStates(fromSquare, toSquare);
+  editSquareStates(fromSquareIndex, toSquareIndex);
 
   end_engine_turn_handler();
 }
@@ -971,112 +979,109 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
     }
 
     addMove(finalizedMove.c_str());
-
-
-    // TODO: extra cases for special moves
   }
 
 
   // addMove(finalizedMove.c_str());
 }
 
-void deduceUserMove() {
-  bool validMove = false;
-  userSideToMove = true;
+// void deduceUserMove() {
+//   bool validMove = false;
+//   userSideToMove = true;
   
-  // Wait for button to be released (assuming LOW is pressed)
-  // while (digitalRead(buttonPin) == LOW) {
-  //     delay(10); // Small delay to avoid busy-waiting
-  // }
+//   // Wait for button to be released (assuming LOW is pressed)
+//   // while (digitalRead(buttonPin) == LOW) {
+//   //     delay(10); // Small delay to avoid busy-waiting
+//   // }
     
-  while (!validMove) {
-    // Copy initial state
-    for (int i = 0; i < 64; i++) {
-      currentBoardState[i] = squareStates[i];
-    }
-    int potentialMovedFromSquare = -1;
-    int potentialMovedToSquare = -1;
-    int numPiecesPickedUp = 0;
-    bool captureMove = false;
+//   while (!validMove) {
+//     // Copy initial state
+//     for (int i = 0; i < 64; i++) {
+//       currentBoardState[i] = squareStates[i];
+//     }
+//     int potentialMovedFromSquare = -1;
+//     int potentialMovedToSquare = -1;
+//     int numPiecesPickedUp = 0;
+//     bool captureMove = false;
 
-    while (userSideToMove) {
-      //digitalWrite(ledPin, HIGH); // Turn LED on
-      uint64_t binaryBoardState = readShiftRegisters();
-      delay(50);
-      uint64_t stableBoardState = readShiftRegisters();
-      if (binaryBoardState != stableBoardState) continue;
+//     while (userSideToMove) {
+//       //digitalWrite(ledPin, HIGH); // Turn LED on
+//       uint64_t binaryBoardState = readShiftRegisters();
+//       delay(50);
+//       uint64_t stableBoardState = readShiftRegisters();
+//       if (binaryBoardState != stableBoardState) continue;
 
-      potentialMovedFromSquare = -1;
-      numPiecesPickedUp = 0;
-      if (!captureMove) potentialMovedToSquare = -1;
+//       potentialMovedFromSquare = -1;
+//       numPiecesPickedUp = 0;
+//       if (!captureMove) potentialMovedToSquare = -1;
 
-      // Update board state
-      for (int i = 0; i < 64; i++) {
-        currentBoardState[i].status = (binaryBoardState >> i) & 1 ? SquareStatus::Occupied : SquareStatus::Empty;
-      }
+//       // Update board state
+//       for (int i = 0; i < 64; i++) {
+//         currentBoardState[i].status = (binaryBoardState >> i) & 1 ? SquareStatus::Occupied : SquareStatus::Empty;
+//       }
 
-      // Detect move
-      for (int i = 0; i < 64; i++) {
-        if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
-          if (currentBoardState[i].color == 1) {
-            if (potentialMovedFromSquare == -1) {
-              potentialMovedFromSquare = i + 1;
-              Serial.print("Potential moved from square: ");
-              Serial.println(potentialMovedFromSquare);
-            }
-            numPiecesPickedUp++;
-          }
-          if (currentBoardState[i].color == 2) {
-            potentialMovedToSquare = i + 1;
-            captureMove = true;
-            Serial.print("Potential moved to square (capture): ");
-            Serial.println(potentialMovedToSquare);
-          }
-        }
-        if (currentBoardState[i].status == 1 && squareStates[i].status == 0 && !captureMove) {
-          if (potentialMovedToSquare == -1) {
-            potentialMovedToSquare = i + 1;
-            Serial.print("Potential moved to square (quiet move): ");
-            Serial.println(potentialMovedToSquare);
-          }
-        }
-      }
-      delay(50);
-    }
-    //digitalWrite(ledPin, LOW); // Turn LED off
+//       // Detect move
+//       for (int i = 0; i < 64; i++) {
+//         if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
+//           if (currentBoardState[i].color == 1) {
+//             if (potentialMovedFromSquare == -1) {
+//               potentialMovedFromSquare = i + 1;
+//               Serial.print("Potential moved from square: ");
+//               Serial.println(potentialMovedFromSquare);
+//             }
+//             numPiecesPickedUp++;
+//           }
+//           if (currentBoardState[i].color == 2) {
+//             potentialMovedToSquare = i + 1;
+//             captureMove = true;
+//             Serial.print("Potential moved to square (capture): ");
+//             Serial.println(potentialMovedToSquare);
+//           }
+//         }
+//         if (currentBoardState[i].status == 1 && squareStates[i].status == 0 && !captureMove) {
+//           if (potentialMovedToSquare == -1) {
+//             potentialMovedToSquare = i + 1;
+//             Serial.print("Potential moved to square (quiet move): ");
+//             Serial.println(potentialMovedToSquare);
+//           }
+//         }
+//       }
+//       delay(50);
+//     }
+//     //digitalWrite(ledPin, LOW); // Turn LED off
 
-    // Check validity
-    if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
-      Serial.println("ERROR - Retry");
-      delay(1000);
-      continue;  // Retry instead of recurse
-    }
-    validMove = true;
-    String finalizedMove;
+//     // Check validity
+//     if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
+//       Serial.println("ERROR - Retry");
+//       delay(1000);
+//       continue;  // Retry instead of recurse
+//     }
+//     validMove = true;
+//     String finalizedMove;
 
-    // Process move (castling or normal)
-    if (numPiecesPickedUp >= 2) {
-      if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
-        editSquareStates(4, 6);
-        editSquareStates(7, 5);
-        finalizedMove = combineSquareStrings(5, 7);
-        Serial.println(finalizedMove);
-      } else {
-        editSquareStates(4, 2);
-        editSquareStates(0, 3);
-        finalizedMove = combineSquareStrings(5, 3);
-        Serial.println(finalizedMove);
-      }
-    } else {
-      editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
-      finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
-      Serial.println(finalizedMove);
-    }
+//     // Process move (castling or normal)
+//     if (numPiecesPickedUp >= 2) {
+//       if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
+//         editSquareStates(4, 6);
+//         editSquareStates(7, 5);
+//         finalizedMove = combineSquareStrings(5, 7);
+//         Serial.println(finalizedMove);
+//       } else {
+//         editSquareStates(4, 2);
+//         editSquareStates(0, 3);
+//         finalizedMove = combineSquareStrings(5, 3);
+//         Serial.println(finalizedMove);
+//       }
+//     } else {
+//       editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
+//       finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
+//       Serial.println(finalizedMove);
+//     }
 
-    // addMove(finalizedMove.c_str());
-    // moveCount++;
-  }
-}
+//     // addMove(finalizedMove.c_str());
+//     // moveCount++;
+//   }
+// }
 
 // starts a new chess game
 void boardStartNewGame() {

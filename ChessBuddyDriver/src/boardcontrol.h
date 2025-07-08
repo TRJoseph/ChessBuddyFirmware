@@ -70,13 +70,13 @@ void performQuietMove(String moveString, PieceType pieceType, SpecialMove specia
 void performKingSideCastle(String moveString);
 void performQueenSideCastle(String moveString);
 void performCaptureMove(String moveString, PieceType pieceType, PieceType capturedPieceType, SpecialMove specialMove);
-void moveToSquare(const String& square);
+void moveToSquare(char square[]);
 int getPieceZOffset(PieceType key);
-PieceType stringToPieceType(const String& pieceStr);
+PieceType stringToPieceType(const char* pieceStr);
 void inverseKinematics(long x, long y);
 int splitString(String input, char delimiter, String outputArray[]);
-void editSquareStates(int fromSquare, int toSquare);
-void algebraicToSquares(const String& move, int& fromSquare, int& toSquare);
+void editSquareStates(uint8_t fromSquare, uint8_t toSquare);
+void algebraicToSquares(const char move[], uint8_t& fromSquare, uint8_t& toSquare);
 void processCommand(String input);
 void handleArmMove(const char* move);
 void instantiateBoardState();
