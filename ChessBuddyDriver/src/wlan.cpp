@@ -4,7 +4,7 @@
 #include "User_Setup.h"
 #include <WiFi.h>
 #include "wlan.h"
-#include "gui.h"
+#include <gui_gateway.h>
 
 
 Preferences prefs;
@@ -209,7 +209,7 @@ void disconnectFromWifiNetwork() {
   WiFi.disconnect();
   delay(200);
   debugCurrentWifiStatus();
-  updateWifiWidget(WL_DISCONNECTED);
+  request_wifi_icon_update(WL_DISCONNECTED);
 }
 
 int getWifiSignalStrength() {
@@ -237,7 +237,7 @@ void processWifiState(lv_timer_t * timer) {
 
         if (networkCount == 0) {
           // count should be 0
-          updateWifiNetworkList(networkCount, networksList);
+          request_wifi_list_update(networkCount, networksList);
         } else {
           networksList = new struct Network[networkCount];
           for (int i = 0; i < networkCount; ++i) {
@@ -282,7 +282,7 @@ void processWifiState(lv_timer_t * timer) {
         }
 
         // TODO: update UI for menu
-        updateWifiNetworkList(networkCount, networksList);
+        request_wifi_list_update(networkCount, networksList);
         WiFi.scanDelete();
 
         // stop the timer
@@ -293,7 +293,7 @@ void processWifiState(lv_timer_t * timer) {
         Serial.println("WiFi scan failed");
         if(failedScans >=5) {
           // Update UI to show failed connection
-          updateWifiWidget(WL_CONNECT_FAILED);
+          request_wifi_icon_update(WL_CONNECT_FAILED);
 
           lv_timer_del(timer);
         }
@@ -305,7 +305,7 @@ void processWifiState(lv_timer_t * timer) {
         Serial.println("WiFi scan timeout");
         
         // Update UI to show timeout
-        updateWifiWidget(WL_CONNECT_FAILED);
+        request_wifi_icon_update(WL_CONNECT_FAILED);
 
         lv_timer_del(timer);
       }
@@ -317,7 +317,7 @@ void processWifiState(lv_timer_t * timer) {
           Serial.println(WiFi.localIP());
           
           // Update UI to show connected state
-          updateWifiWidget(WL_CONNECTED);
+          request_wifi_icon_update(WL_CONNECTED);
           
           // if wifi is connected stop the timer
           lv_timer_del(timer);
@@ -369,7 +369,7 @@ void startWifiScan() {
     currentNetwork[0].channel = WiFi.channel();
     currentNetwork[0].encryptionType = "";
 
-    updateWifiNetworkList(1, currentNetwork);
+    request_wifi_list_update(1, currentNetwork);
   } else {
       Serial.println("Resetting WiFi before scan");
       WiFi.mode(WIFI_STA); 

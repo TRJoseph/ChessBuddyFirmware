@@ -1,4 +1,4 @@
-#include <AccelStepper.h>
+#include <FastAccelStepper.h>
 #include <string.h>
 #include <Main_Definitions.h>
 #include <boardcontrol.h>
@@ -134,39 +134,124 @@ KeyValuePair PieceZAxisOffsets[] = {
 /* THINGS TO NOTE:
 The X stepper motor is referring to the base joint rotation. The Y stepper motor is referring to the arm segment joint rotation.
 */
+// class StepperMotor {
+// public:
+//     AccelStepper motor;
+//     float normalMaxSpeed;
+//     float normalAcceleration;
+//     float calibrationMaxSpeed;
+//     float calibrationAcceleration;
+
+//     StepperMotor(int stepPin, int dirPin, float normalSpeed, float normalAccel, float calibSpeed, float calibAccel) : motor(AccelStepper::DRIVER, stepPin, dirPin) {
+//         normalMaxSpeed = normalSpeed;
+//         normalAcceleration = normalAccel;
+//         calibrationMaxSpeed = calibSpeed;
+//         calibrationAcceleration = calibAccel;
+//     }
+
+//     void setNormalMotorSettings() {
+//         motor.setMaxSpeed(normalMaxSpeed);
+//         motor.setAcceleration(normalAcceleration);
+//     }
+
+
+//     void calibrate(int limitSwitchPin) {
+//         motor.setMaxSpeed(calibrationMaxSpeed);
+//         motor.setAcceleration(calibrationAcceleration);
+        
+//         motor.moveTo(-30000);  // move far in reverse
+  
+//         while (digitalRead(limitSwitchPin) == LOW) {
+//           motor.run();    // continue running until switch is triggered
+//         }
+
+//         Serial.println("Axis Calibrated!");
+//         motor.setCurrentPosition(0); // set zero position after calibration
+
+//         // reset speed and accel settings
+//         setNormalMotorSettings();
+
+//         delay(500);
+//     }
+
+    
+//     void moveTo(long position) {
+//         motor.moveTo(position);
+//         while (motor.run()) { }
+//     }
+
+//     void moveToNoRun(long position) {
+//       // moves relative to current position
+//         motor.move(position);
+//     }
+    
+// };
+
+FastAccelStepperEngine stepperEngine = FastAccelStepperEngine();
+
+
 class StepperMotor {
 public:
-    AccelStepper motor;
-    float normalMaxSpeed;
-    float normalAcceleration;
-    float calibrationMaxSpeed;
-    float calibrationAcceleration;
+    FastAccelStepper *motor;
+    int stepPin, dirPin, limitPin;
+    uint32_t normalMaxSpeed;
+    uint32_t normalAcceleration;
+    uint32_t calibrationMaxSpeed;
+    uint32_t calibrationAcceleration;
 
-    StepperMotor(int stepPin, int dirPin, float normalSpeed, float normalAccel, float calibSpeed, float calibAccel) : motor(AccelStepper::DRIVER, stepPin, dirPin) {
+    StepperMotor(int stepPin, int dirPin, int limitPin, uint32_t normalSpeed, uint32_t normalAccel, uint32_t calibSpeed, uint32_t calibAccel) : stepPin(stepPin), dirPin(dirPin), limitPin(limitPin) {
         normalMaxSpeed = normalSpeed;
         normalAcceleration = normalAccel;
         calibrationMaxSpeed = calibSpeed;
         calibrationAcceleration = calibAccel;
     }
 
-    void setNormalMotorSettings() {
-        motor.setMaxSpeed(normalMaxSpeed);
-        motor.setAcceleration(normalAcceleration);
+    void initializeMotor() {
+        Serial.print("Connecting stepper to pin: ");
+        Serial.println(stepPin);
+        
+        motor = stepperEngine.stepperConnectToPin(stepPin);
+        if (motor == nullptr) {
+            Serial.println("ERROR: Failed to connect stepper!");
+            return;
+        }
+        
+        if (dirPin >= 0) {  // Only set if valid pin
+            motor->setDirectionPin(dirPin);
+        }
+        
+        setNormalMotorSettings();
     }
 
+    void setNormalMotorSettings() {
+      motor->setSpeedInHz(normalMaxSpeed);
+      motor->setAcceleration(normalAcceleration);
+    }
 
-    void calibrate(int limitSwitchPin) {
-        motor.setMaxSpeed(calibrationMaxSpeed);
-        motor.setAcceleration(calibrationAcceleration);
-        
-        motor.moveTo(-30000);  // move far in reverse
+    void setCalibrationMotorSettings() {
+      motor->setSpeedInHz(calibrationMaxSpeed);
+      motor->setAcceleration(calibrationAcceleration);
+    }
+
+    void setCustomMotorSpeedAccel(uint32_t speed, uint32_t accel) {
+      motor->setSpeedInHz(speed);
+      motor->setAcceleration(accel);
+    }
+
+    void calibrate() {
+        setCalibrationMotorSettings();
+
+        motor->runBackward();
   
-        while (digitalRead(limitSwitchPin) == LOW) {
-          motor.run();    // continue running until switch is triggered
+        while (digitalRead(limitPin) == LOW) {
+          delay(10);
         }
 
+        motor->forceStop();
+        delay(100);
+
         Serial.println("Axis Calibrated!");
-        motor.setCurrentPosition(0); // set zero position after calibration
+        setZeroPosition();
 
         // reset speed and accel settings
         setNormalMotorSettings();
@@ -174,31 +259,55 @@ public:
         delay(500);
     }
 
-    
-    void moveTo(long position) {
-        motor.moveTo(position);
-        while (motor.run()) { }
+    // moves relative to current position
+    void move(long position) {
+      motor->move(position);
     }
 
-    void moveToNoRun(long position) {
-      // moves relative to current position
-        motor.move(position);
+    void moveTo(long position) {
+      motor->moveTo(position);
     }
-    
+
+    // set zero position after calibration
+    void setZeroPosition() {
+      motor->setCurrentPosition(0);
+    }
+
+    int32_t getCurrentPosition() {
+      return motor->getCurrentPosition();
+    }
+
+    void waitforCompletion() {
+      while (motor && motor->isRunning()) {
+          delay(10);
+      }
+    }
 };
 
 // x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
-StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
-StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
+// StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
+// StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
+// StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
 
-//AccelStepper xStepper(AccelStepper::DRIVER, xStepPin, xDirPin);
-//AccelStepper yStepper(AccelStepper::DRIVER, yStepPin, yDirPin);
-//AccelStepper zStepper(AccelStepper::DRIVER, zStepPin, zDirPin);
+// FastAccelStepper *xStepperMotor;
+// FastAccelStepper *yStepperMotor;
+// FastAccelStepper *zStepperMotor;
+
+StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
+StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
+StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
+
+void initializeStepperMotors() {
+  stepperEngine.init();
+  xStepperMotor.initializeMotor();
+  yStepperMotor.initializeMotor();
+  zStepperMotor.initializeMotor();
+}
 
   
 // calibrate all X,Y,Z starting positions
 void runCalibrationRoutine() {
+  Serial.println("Starting Calibration Routine...");
 
   // ensure arm clearance for y axis calibration routine
   xStepperMotor.setNormalMotorSettings();
@@ -206,29 +315,36 @@ void runCalibrationRoutine() {
 
   // THIS LINE IS TEMPORARY, ITS TO ENSURE THE ARM DOES NOT TURN PAST THE LIMIT SWITCH
   xStepperMotor.moveTo(500);
+  xStepperMotor.waitforCompletion();
   //
 
-  xStepperMotor.calibrate(xLimitPin);
-  //xStepperMotor.moveTo(1810);
+  xStepperMotor.calibrate();
 
-  yStepperMotor.calibrate(yLimitPin);
+  yStepperMotor.calibrate();
   yStepperMotor.moveTo(10280);
+  yStepperMotor.waitforCompletion();
 
-  zStepperMotor.calibrate(zLimitPin);
+  zStepperMotor.calibrate();
   zStepperMotor.moveTo(11000);
+  zStepperMotor.waitforCompletion();
+
   xStepperMotor.moveTo(729);
+  xStepperMotor.waitforCompletion();
   
-  xStepperMotor.motor.setCurrentPosition(0);
-  yStepperMotor.motor.setCurrentPosition(0);
-  zStepperMotor.motor.setCurrentPosition(0);
+  xStepperMotor.setZeroPosition();
+  yStepperMotor.setZeroPosition();
+  zStepperMotor.setZeroPosition();
 
   gotoParkPosition();
+
   calibrationStatus = true;
 }
 
 void gotoParkPosition() {
   // go to park position
   inverseKinematics(-100, 0);
+  xStepperMotor.waitforCompletion();
+  yStepperMotor.waitforCompletion();
 }
 
 int* getSquarePosition(char square[]) {
@@ -263,16 +379,20 @@ void performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType = 
 
   //move down and trigger magnet high
   zStepperMotor.moveTo(pieceZOffset);
+  zStepperMotor.waitforCompletion();
   digitalWrite(electromagnetPin, HIGH);
 
   // TODO: THIS MAY NEED TO BE TWEAKED FURTHER, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
   zStepperMotor.moveTo(8300 + pieceZOffset);
+  zStepperMotor.waitforCompletion();
 
   moveToSquare(toSquare);
 
   zStepperMotor.moveTo(pieceZOffset);
+  zStepperMotor.waitforCompletion();
   digitalWrite(electromagnetPin, LOW);
   zStepperMotor.moveTo(5800);
+  zStepperMotor.waitforCompletion();
 
   gotoParkPosition();
 }
@@ -400,6 +520,8 @@ void moveToSquare(char square[]) {
       inverseKinematics(position[0], position[1]);
       delay(50);
   }
+  xStepperMotor.waitforCompletion();
+  yStepperMotor.waitforCompletion();
 }
 
 int getPieceZOffset(PieceType key) {
@@ -460,8 +582,8 @@ void inverseKinematics(long x, long y) {
   Serial.print("targetYSteps: ");
   Serial.println(targetYSteps);
 
-  long yStepperPos = yStepperMotor.motor.currentPosition();
-  long xStepperPos = xStepperMotor.motor.currentPosition();
+  long yStepperPos = yStepperMotor.getCurrentPosition();
+  long xStepperPos = xStepperMotor.getCurrentPosition();
 
   long ySteps = -(targetYSteps - abs(yStepperPos)); 
 
@@ -496,21 +618,20 @@ void inverseKinematics(long x, long y) {
   // Scale each motor's speed to its share of the move
   float xSpeed = baseStepperSpeed * ((float)xAbsSteps / maxSteps);
   float ySpeed = baseStepperSpeed * ((float)yAbsSteps / maxSteps);
-  xStepperMotor.motor.setMaxSpeed(xSpeed);
-  yStepperMotor.motor.setMaxSpeed(ySpeed);
+  xStepperMotor.setCustomMotorSpeedAccel(xSpeed, xSpeed * baseStepperAccelScalar);
 
-  xStepperMotor.motor.setAcceleration(xSpeed * baseStepperAccelScalar);
-  yStepperMotor.motor.setAcceleration(ySpeed * baseStepperAccelScalar);
+  yStepperMotor.setCustomMotorSpeedAccel(ySpeed, ySpeed * baseStepperAccelScalar);
 
-  xStepperMotor.moveToNoRun(xSteps);
-  yStepperMotor.moveToNoRun(ySteps);
+
+  xStepperMotor.move(xSteps);
+  yStepperMotor.move(ySteps);
   
-  while (xStepperMotor.motor.distanceToGo() != 0 || 
-         yStepperMotor.motor.distanceToGo() != 0) {
+  // while (xStepperMotor.motor.distanceToGo() != 0 || 
+  //        yStepperMotor.motor.distanceToGo() != 0) {
     
-    xStepperMotor.motor.run();
-    yStepperMotor.motor.run();
-  }
+  //   xStepperMotor.motor.run();
+  //   yStepperMotor.motor.run();
+  // }
 }
 
 uint8_t splitString(const char* input, char delimiter, char tokens[][28], uint8_t maxTokens = 5) {
@@ -1152,6 +1273,8 @@ void setupBoard() {
   
   digitalWrite(clockEnablePin, LOW); // ensure clock is enabled
   digitalWrite(latchPin, HIGH);
+
+  initializeStepperMotors();
 }
 
 

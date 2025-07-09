@@ -6,6 +6,7 @@
 #include <stack>
 #include <serverInterface.h>
 #include <boardcontrol.h>
+#include <gui_gateway.h>
 
 // Misc Image Includes
 #include "main_logo.h"
@@ -1268,16 +1269,17 @@ void end_turn_btn_handler(lv_event_t * e)
 
         resetPieceDetectionParameters();
 
-        // // non-blocking task for the http request to get a move
-        // xTaskCreate(
-        //     getBestMoveTask,   
-        //     "GetBestMoveTask", 
-        //     32768,              
-        //     NULL,              
-        //     1,                
-        //     NULL 
-        // );
-        getBestMoveFromServer();
+        //non-blocking task for the http request to get a move
+        xTaskCreatePinnedToCore(
+            getBestMoveTask,     // Task function
+            "GetBestMoveTask",   // Name
+            32768,               // Stack size (in words, 4 bytes each) — adjust as needed
+            NULL,                // Parameters
+            3,                   // Priority
+            NULL,                // Task handle
+            0                    // Core ID (0 = good for background/IO tasks)
+        );
+        //getBestMoveFromServer();
     }
 }
 
@@ -1293,12 +1295,6 @@ void end_engine_turn_handler() {
     // pause the user timer and start the computer's clock
     lv_timer_pause(computer_timer);
     lv_timer_resume(user_timer);
-
-    printMoveHistory();
-
-    // swap back to user turn to move   
-    resetPieceDetectionParameters();
-    userSideToMove = true;
 }
 
 void end_game_button_handler(lv_event_t * e) {

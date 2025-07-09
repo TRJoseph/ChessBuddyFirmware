@@ -4,6 +4,8 @@
 #include <lvgl.h>
 #include "gui.h"
 #include "wlan.h"
+#include "gui_gateway.h"
+#include "serverInterface.h"
 
 
 /*Set to your screen resolution and rotation*/
@@ -65,13 +67,15 @@ void setup()
     /* Changes to the start screen */
     switch_to_start();
 
-    
+    // starts the gateway thread for GUI
+    start_gui_gateway_task();
+
     /* */
     Serial.println( "Setup done" );
 }
 
 void loop()
 {
-    lv_timer_handler(); /* let the GUI do its work */
     scanningUserMove(userSideToMove, false);
+    delay(10);
 }

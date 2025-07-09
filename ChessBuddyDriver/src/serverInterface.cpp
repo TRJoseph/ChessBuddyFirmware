@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 #include "boardcontrol.h"
 #include <WiFiClientSecure.h>
+#include <esp_task_wdt.h>
+
 
 // Render endpoint
 const char* serverURL = "https://chess-engine-service.onrender.com/get_move";
@@ -71,6 +73,7 @@ void getBestMoveFromServer() {
 }
 
 void getBestMoveTask(void *parameter) {
+  esp_task_wdt_init(60, true);
   getBestMoveFromServer();
   vTaskDelete(NULL);
 }
