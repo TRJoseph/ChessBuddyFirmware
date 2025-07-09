@@ -1,8 +1,7 @@
-#ifndef BOARDCONTROL
-#define BOARDCONTROL
+#ifndef MAINCONTROL
+#define MAINCONTROL
 
 #include <Arduino.h>
-
 
 #define MAX_MOVES 200
 #define MOVE_LENGTH 6

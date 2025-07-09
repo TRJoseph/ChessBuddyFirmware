@@ -1,10 +1,10 @@
 #include <Preferences.h>
 #include "FT6336U.h"
-#include <Main_Definitions.h>
+#include "Main_Definitions.h"
 #include "User_Setup.h"
 #include <WiFi.h>
 #include "wlan.h"
-#include <gui_gateway.h>
+#include "gui_gateway.h"
 
 
 Preferences prefs;

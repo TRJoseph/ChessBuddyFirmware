@@ -1,10 +1,10 @@
 #include <FastAccelStepper.h>
 #include <string.h>
-#include <Main_Definitions.h>
-#include <boardcontrol.h>
-#include <serverInterface.h>
-#include <gui.h>
-#include <gui_gateway.h>
+#include "Main_Definitions.h"
+#include "maincontrol.h"
+#include "serverInterface.h"
+#include "gui.h"
+#include "gui_gateway.h"
 
 
 // TODO: move these and movehistory variables into a gamestate.cpp/.h file pair
@@ -111,15 +111,6 @@ int SquarePositions[64][2] = {
 
 // array of key value pairs for each piece offset
 // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
-// KeyValuePair PieceZAxisOffsets[] = {
-//     {PieceType::Pawn, -3740},
-//     {PieceType::Knight, -2980},
-//     {PieceType::Bishop, -2500},
-//     {PieceType::Rook, -3370},
-//     {PieceType::Queen, -1940},
-//     {PieceType::King, -650} // king is good
-// };
-
 KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::Pawn, -5240},
     {PieceType::Knight, -4480},
@@ -129,67 +120,11 @@ KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::King, -2150} // king is good
 };
 
-
+FastAccelStepperEngine stepperEngine = FastAccelStepperEngine();
 
 /* THINGS TO NOTE:
 The X stepper motor is referring to the base joint rotation. The Y stepper motor is referring to the arm segment joint rotation.
 */
-// class StepperMotor {
-// public:
-//     AccelStepper motor;
-//     float normalMaxSpeed;
-//     float normalAcceleration;
-//     float calibrationMaxSpeed;
-//     float calibrationAcceleration;
-
-//     StepperMotor(int stepPin, int dirPin, float normalSpeed, float normalAccel, float calibSpeed, float calibAccel) : motor(AccelStepper::DRIVER, stepPin, dirPin) {
-//         normalMaxSpeed = normalSpeed;
-//         normalAcceleration = normalAccel;
-//         calibrationMaxSpeed = calibSpeed;
-//         calibrationAcceleration = calibAccel;
-//     }
-
-//     void setNormalMotorSettings() {
-//         motor.setMaxSpeed(normalMaxSpeed);
-//         motor.setAcceleration(normalAcceleration);
-//     }
-
-
-//     void calibrate(int limitSwitchPin) {
-//         motor.setMaxSpeed(calibrationMaxSpeed);
-//         motor.setAcceleration(calibrationAcceleration);
-        
-//         motor.moveTo(-30000);  // move far in reverse
-  
-//         while (digitalRead(limitSwitchPin) == LOW) {
-//           motor.run();    // continue running until switch is triggered
-//         }
-
-//         Serial.println("Axis Calibrated!");
-//         motor.setCurrentPosition(0); // set zero position after calibration
-
-//         // reset speed and accel settings
-//         setNormalMotorSettings();
-
-//         delay(500);
-//     }
-
-    
-//     void moveTo(long position) {
-//         motor.moveTo(position);
-//         while (motor.run()) { }
-//     }
-
-//     void moveToNoRun(long position) {
-//       // moves relative to current position
-//         motor.move(position);
-//     }
-    
-// };
-
-FastAccelStepperEngine stepperEngine = FastAccelStepperEngine();
-
-
 class StepperMotor {
 public:
     FastAccelStepper *motor;
@@ -282,17 +217,14 @@ public:
           delay(10);
       }
     }
+
+    void moveToAndWaitForCompletion(long position) {
+      moveTo(position);
+      waitforCompletion();
+    }
 };
 
-// x step pin, y dir pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-// StepperMotor xStepperMotor(xStepPin, xDirPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
-// StepperMotor yStepperMotor(yStepPin, yDirPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
-// StepperMotor zStepperMotor(zStepPin, zDirPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
-
-// FastAccelStepper *xStepperMotor;
-// FastAccelStepper *yStepperMotor;
-// FastAccelStepper *zStepperMotor;
-
+// x step pin, y dir pin, limit pin, normal speed, normal acceleration, calibration speed, calibration acceleration
 StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
 StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
 StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
@@ -304,7 +236,6 @@ void initializeStepperMotors() {
   zStepperMotor.initializeMotor();
 }
 
-  
 // calibrate all X,Y,Z starting positions
 void runCalibrationRoutine() {
   Serial.println("Starting Calibration Routine...");
@@ -378,21 +309,17 @@ void performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType = 
   moveToSquare(fromSquare);
 
   //move down and trigger magnet high
-  zStepperMotor.moveTo(pieceZOffset);
-  zStepperMotor.waitforCompletion();
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
 
   // TODO: THIS MAY NEED TO BE TWEAKED FURTHER, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-  zStepperMotor.moveTo(8300 + pieceZOffset);
-  zStepperMotor.waitforCompletion();
+  zStepperMotor.moveToAndWaitForCompletion(8300 + pieceZOffset);
 
   moveToSquare(toSquare);
 
-  zStepperMotor.moveTo(pieceZOffset);
-  zStepperMotor.waitforCompletion();
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5800);
-  zStepperMotor.waitforCompletion();
+  zStepperMotor.moveToAndWaitForCompletion(5800);
 
   gotoParkPosition();
 }
@@ -472,47 +399,42 @@ void performQueenSideCastle(String moveString) {
 }
 
 // special move here could be for en passant or a capture promotion move
-// void performCaptureMove(String moveString, PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
-//   size_t length = moveString.length();
-//   size_t midpoint = length / 2;
+void performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King) {
 
-//   int pieceZOffset = getPieceZOffset(pieceType);
-//   int capturedPieceZOffset = getPieceZOffset(capturedPieceType);
+  int pieceZOffset = getPieceZOffset(pieceType);
+  int capturedPieceZOffset = getPieceZOffset(capturedPieceType);
+
+  // extra steps for capture, we need to visit the "to square" first
+  moveToSquare(toSquare);
+
+  //move down and trigger magnet high
+  zStepperMotor.moveToAndWaitForCompletion(capturedPieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+  zStepperMotor.moveToAndWaitForCompletion(8300 + capturedPieceZOffset);
   
-//   // split the move string into two individual squares
-//   String fromSquare = moveString.substring(0, midpoint);
-//   String toSquare = moveString.substring(midpoint);  
-
-//   // extra steps for capture, we need to visit the "to square" first
-//   moveToSquare(toSquare);
-
-//   //move down and trigger magnet high
-//   zStepperMotor.moveTo(capturedPieceZOffset);
-//   digitalWrite(electromagnetPin, HIGH);
-//   zStepperMotor.moveTo(8200 + capturedPieceZOffset);
-//   // go to park position to drop off captured piece
-//   gotoParkPosition();
+  // go to park position to drop off captured piece
+  gotoParkPosition();
   
-//   //zStepperMotor.moveTo(5500);
-//   digitalWrite(electromagnetPin, LOW);
-//   //zStepperMotor.moveTo(0);
+  //zStepperMotor.moveTo(5500);
+  digitalWrite(electromagnetPin, LOW);
+  //zStepperMotor.moveTo(0);
 
-//   moveToSquare(fromSquare);
+  moveToSquare(fromSquare);
 
-//   //move down and trigger magnet high
-//   zStepperMotor.moveTo(pieceZOffset);
-//   digitalWrite(electromagnetPin, HIGH);
+  //move down and trigger magnet high
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
 
-//   zStepperMotor.moveTo(8000 + pieceZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(8000 + pieceZOffset);
 
-//   moveToSquare(toSquare);
+  moveToSquare(toSquare);
 
-//   zStepperMotor.moveTo(pieceZOffset);
-//   digitalWrite(electromagnetPin, LOW);
-//   zStepperMotor.moveTo(5500);
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveToAndWaitForCompletion(5500);
 
-//   gotoParkPosition();
-// }
+  gotoParkPosition();
+}
 
 void moveToSquare(char square[]) {
   int* position = getSquarePosition(square);
@@ -618,9 +540,8 @@ void inverseKinematics(long x, long y) {
   // Scale each motor's speed to its share of the move
   float xSpeed = baseStepperSpeed * ((float)xAbsSteps / maxSteps);
   float ySpeed = baseStepperSpeed * ((float)yAbsSteps / maxSteps);
-  xStepperMotor.setCustomMotorSpeedAccel(xSpeed, xSpeed * baseStepperAccelScalar);
-
-  yStepperMotor.setCustomMotorSpeedAccel(ySpeed, ySpeed * baseStepperAccelScalar);
+  xStepperMotor.setCustomMotorSpeedAccel((uint32_t)xSpeed, (uint32_t)(xSpeed * baseStepperAccelScalar));
+  yStepperMotor.setCustomMotorSpeedAccel((uint32_t)ySpeed,(uint32_t)(ySpeed * baseStepperAccelScalar));
 
 
   xStepperMotor.move(xSteps);
@@ -772,36 +693,6 @@ void clearMoveHistory() {
     moveCount = 0;  // Reset the move counter
 }
 
-// void handleArmMove(const char* move) {
-//   const char delimiter = '|';
-//   char tokens[5][10];
-
-//   uint8_t tokenCount = splitString(move, delimiter, tokens);
-
-//   // moveString should contain a string like "e2e4"
-//   char moveString[5];
-
-//   strcpy(moveString, tokens[0]);
-
-//   char moveType[14];
-//   strcpy(moveString, tokens[1]);
-
-//   // adds arm move to the movelist
-//   addMove(moveString);
-
-//   uint8_t fromSquare = 0, toSquare = 0;
-//   algebraicToSquares(moveString, fromSquare, toSquare);
-
-//   // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
-//   if(tokenCount <= 2) {
-//     performQuietMove(moveString, stringToPieceType(moveType));
-//   }
-
-//   editSquareStates(fromSquare, toSquare);
-
-
-//   end_engine_turn_handler();
-// }
 
 int splitString(String input, char delimiter, String outputArray[]) {
   int tokenIndex = 0;
@@ -884,6 +775,7 @@ void handleArmMove(const char* move) {
     // handle these other move scenarios
     if(capturedPieceTokenIndex != -1) {
       // perform capture move
+      performCaptureMove(fromSquare, toSquare, stringToPieceType(tokens[1]), stringToPieceType(tokens[capturedPieceTokenIndex]));
     }
 
     if(specialMoveTokenIndex != -1) {
@@ -1122,108 +1014,7 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
 
     addMove(finalizedMove.c_str());
   }
-
-
-  // addMove(finalizedMove.c_str());
 }
-
-// void deduceUserMove() {
-//   bool validMove = false;
-//   userSideToMove = true;
-  
-//   // Wait for button to be released (assuming LOW is pressed)
-//   // while (digitalRead(buttonPin) == LOW) {
-//   //     delay(10); // Small delay to avoid busy-waiting
-//   // }
-    
-//   while (!validMove) {
-//     // Copy initial state
-//     for (int i = 0; i < 64; i++) {
-//       currentBoardState[i] = squareStates[i];
-//     }
-//     int potentialMovedFromSquare = -1;
-//     int potentialMovedToSquare = -1;
-//     int numPiecesPickedUp = 0;
-//     bool captureMove = false;
-
-//     while (userSideToMove) {
-//       //digitalWrite(ledPin, HIGH); // Turn LED on
-//       uint64_t binaryBoardState = readShiftRegisters();
-//       delay(50);
-//       uint64_t stableBoardState = readShiftRegisters();
-//       if (binaryBoardState != stableBoardState) continue;
-
-//       potentialMovedFromSquare = -1;
-//       numPiecesPickedUp = 0;
-//       if (!captureMove) potentialMovedToSquare = -1;
-
-//       // Update board state
-//       for (int i = 0; i < 64; i++) {
-//         currentBoardState[i].status = (binaryBoardState >> i) & 1 ? SquareStatus::Occupied : SquareStatus::Empty;
-//       }
-
-//       // Detect move
-//       for (int i = 0; i < 64; i++) {
-//         if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
-//           if (currentBoardState[i].color == 1) {
-//             if (potentialMovedFromSquare == -1) {
-//               potentialMovedFromSquare = i + 1;
-//               Serial.print("Potential moved from square: ");
-//               Serial.println(potentialMovedFromSquare);
-//             }
-//             numPiecesPickedUp++;
-//           }
-//           if (currentBoardState[i].color == 2) {
-//             potentialMovedToSquare = i + 1;
-//             captureMove = true;
-//             Serial.print("Potential moved to square (capture): ");
-//             Serial.println(potentialMovedToSquare);
-//           }
-//         }
-//         if (currentBoardState[i].status == 1 && squareStates[i].status == 0 && !captureMove) {
-//           if (potentialMovedToSquare == -1) {
-//             potentialMovedToSquare = i + 1;
-//             Serial.print("Potential moved to square (quiet move): ");
-//             Serial.println(potentialMovedToSquare);
-//           }
-//         }
-//       }
-//       delay(50);
-//     }
-//     //digitalWrite(ledPin, LOW); // Turn LED off
-
-//     // Check validity
-//     if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
-//       Serial.println("ERROR - Retry");
-//       delay(1000);
-//       continue;  // Retry instead of recurse
-//     }
-//     validMove = true;
-//     String finalizedMove;
-
-//     // Process move (castling or normal)
-//     if (numPiecesPickedUp >= 2) {
-//       if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
-//         editSquareStates(4, 6);
-//         editSquareStates(7, 5);
-//         finalizedMove = combineSquareStrings(5, 7);
-//         Serial.println(finalizedMove);
-//       } else {
-//         editSquareStates(4, 2);
-//         editSquareStates(0, 3);
-//         finalizedMove = combineSquareStrings(5, 3);
-//         Serial.println(finalizedMove);
-//       }
-//     } else {
-//       editSquareStates(potentialMovedFromSquare - 1, potentialMovedToSquare - 1);
-//       finalizedMove = combineSquareStrings(potentialMovedFromSquare, potentialMovedToSquare);
-//       Serial.println(finalizedMove);
-//     }
-
-//     // addMove(finalizedMove.c_str());
-//     // moveCount++;
-//   }
-// }
 
 // starts a new chess game
 void boardStartNewGame() {
@@ -1256,9 +1047,6 @@ void setupBoard() {
   pinMode(xLimitPin, INPUT); 
   pinMode(yLimitPin, INPUT); 
   pinMode(zLimitPin, INPUT);
-  
-  // button pin for user move completion feedback
-  //pinMode(buttonPin, INPUT_PULLUP);
 
   // Set built-in LED pin as output
   //pinMode(ledPin, OUTPUT);
@@ -1277,14 +1065,3 @@ void setupBoard() {
   initializeStepperMotors();
 }
 
-
-// void loop() {
-//   if (Serial.available() > 0) {
-//     String input = Serial.readStringUntil('\n');
-//     input.trim();
-
-//     if (input.length() > 0) {
-//       processCommand(input);
-//     }
-//   }
-// }

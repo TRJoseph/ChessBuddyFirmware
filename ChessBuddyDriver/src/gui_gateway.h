@@ -5,9 +5,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
-#include <gui.h>
-#include <wlan.h>
 #include <esp_task_wdt.h>
+#include "gui.h"
+#include "wlan.h"
 
 enum GuiActionType {
     GUI_ACTION_SWITCH_SCREEN,

@@ -1,7 +1,7 @@
-#include <WiFi.h>
+#include "WiFi.h"
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "boardcontrol.h"
+#include "maincontrol.h"
 #include <WiFiClientSecure.h>
 #include <esp_task_wdt.h>
 
@@ -73,7 +73,7 @@ void getBestMoveFromServer() {
 }
 
 void getBestMoveTask(void *parameter) {
-  esp_task_wdt_init(60, true);
+  //esp_task_wdt_init(60, true);
   getBestMoveFromServer();
   vTaskDelete(NULL);
 }

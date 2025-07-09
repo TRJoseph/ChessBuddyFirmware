@@ -1,6 +1,5 @@
 #include "gui_gateway.h"
 
-
 QueueHandle_t guiQueue;
 
 static void lvgl_gateway_task(void *pvParameters) {

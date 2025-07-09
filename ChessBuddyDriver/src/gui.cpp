@@ -1,12 +1,12 @@
-#include <gui.h>
+#include "gui.h"
 #include "FT6336U.h"
-#include <Main_Definitions.h>
+#include "Main_Definitions.h"
 #include "User_Setup.h"
 #include "wlan.h"
 #include <stack>
-#include <serverInterface.h>
-#include <boardcontrol.h>
-#include <gui_gateway.h>
+#include "serverInterface.h"
+#include "maincontrol.h"
+#include "gui_gateway.h"
 
 // Misc Image Includes
 #include "main_logo.h"

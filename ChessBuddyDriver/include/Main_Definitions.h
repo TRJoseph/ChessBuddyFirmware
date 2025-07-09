@@ -4,9 +4,6 @@
 // Pin Definitions for Electronic Chess Board 
 // ESP32-S3-Mini-1 GPIO mapping
 
-// TODO: this hardware button is to be replaced with gui button
-constexpr int buttonPin = 4;
-
 constexpr int ledPin = 17;
 
 // Shift Register Pins
@@ -67,7 +64,7 @@ constexpr double BaseGearReductionRatio = 5.5;
 constexpr double ArmGearReductionRatio = 22;
 
 // default config for stepper motors
-constexpr float baseStepperSpeed = 2000.0;
+constexpr float baseStepperSpeed = 2500.0;
 constexpr float baseStepperAccel = 50.0;
 constexpr float baseStepperAccelScalar = 2.5;
 

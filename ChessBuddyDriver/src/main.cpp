@@ -1,6 +1,6 @@
 #include <TFT_eSPI.h>        // Graphics and display library
 #include "FT6336U.h"         // Touch controller
-#include <Main_Definitions.h>
+#include "Main_Definitions.h"
 #include <lvgl.h>
 #include "gui.h"
 #include "wlan.h"

@@ -3,7 +3,7 @@
 
 #include <lvgl.h>
 #include "wlan.h"
-#include "boardcontrol.h"
+#include "maincontrol.h"
 
 
 struct NetworkInfo {
