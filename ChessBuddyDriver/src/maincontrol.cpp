@@ -31,6 +31,16 @@ int potentialMovedToSquare;
 int numPiecesPickedUp;
 bool captureMove;
 
+// castling constants
+// static uint8_t whiteKingFromSquare = 4;
+// static uint8_t whiteKingKingSideToSquare = 6;
+// static uint8_t whiteKingKingSideToSquare = 6;
+// static uint8_t whiteKingQueenSideToSquare = 2;
+// static uint8_t whiteRookKingSideFromSquare = 7;
+// static uint8_t whiteRookKingSideToSquare = 5;
+// static uint8_t whiteRookQueenSideFromSquare = 0;
+// static uint8_t whiteRookQueenSideToSquare = 3;
+
 // Chess board x,y positions relative to the robotic arm
 // bottom left square is index 0, top right square is index 63
 int SquarePositions[64][2] = {
@@ -119,6 +129,9 @@ KeyValuePair PieceZAxisOffsets[] = {
     {PieceType::Queen, -3440},
     {PieceType::King, -2150} // king is good
 };
+
+int zAxisTopHeight = 8300;
+int zAxisReferenceHeight = 5800;
 
 FastAccelStepperEngine stepperEngine = FastAccelStepperEngine();
 
@@ -214,7 +227,7 @@ public:
 
     void waitforCompletion() {
       while (motor && motor->isRunning()) {
-          delay(10);
+        delay(10);
       }
     }
 
@@ -222,12 +235,16 @@ public:
       moveTo(position);
       waitforCompletion();
     }
+
+    void setLinear() {
+      motor->setLinearAcceleration(0);
+    }
 };
 
 // x step pin, y dir pin, limit pin, normal speed, normal acceleration, calibration speed, calibration acceleration
 StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
 StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
-StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 4, baseStepperSpeed * baseStepperAccelScalar, baseStepperSpeed / 3, baseStepperSpeed); 
+StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 3, 20000, baseStepperSpeed / 3, baseStepperSpeed); 
 
 void initializeStepperMotors() {
   stepperEngine.init();
@@ -265,6 +282,7 @@ void runCalibrationRoutine() {
   xStepperMotor.setZeroPosition();
   yStepperMotor.setZeroPosition();
   zStepperMotor.setZeroPosition();
+  zStepperMotor.setLinear();
 
   gotoParkPosition();
 
@@ -313,18 +331,18 @@ void performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType = 
   digitalWrite(electromagnetPin, HIGH);
 
   // TODO: THIS MAY NEED TO BE TWEAKED FURTHER, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
-  zStepperMotor.moveToAndWaitForCompletion(8300 + pieceZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + pieceZOffset);
 
   moveToSquare(toSquare);
 
   zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveToAndWaitForCompletion(5800);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
 
   gotoParkPosition();
 }
 
-void performKingSideCastle(String moveString) {
+void performKingSideCastle() {
   
   int kingZOffset = getPieceZOffset(PieceType::King);
   int rookZOffset = getPieceZOffset(PieceType::Rook);
@@ -332,73 +350,72 @@ void performKingSideCastle(String moveString) {
   moveToSquare("e8");
   
   //move down and trigger magnet high
-  zStepperMotor.moveTo(kingZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(kingZOffset);
   digitalWrite(electromagnetPin, HIGH);
   
-  zStepperMotor.moveTo(8200 + kingZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + kingZOffset);
 
   moveToSquare("g8");
 
-  zStepperMotor.moveTo(kingZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(kingZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5500);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
   
   // move the rook
   moveToSquare("h8");
   
   //move down and trigger magnet high
-  zStepperMotor.moveTo(rookZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(rookZOffset);
   digitalWrite(electromagnetPin, HIGH);
   
-  zStepperMotor.moveTo(8200 + rookZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + rookZOffset);
 
   moveToSquare("f8");
   
-  zStepperMotor.moveTo(rookZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(rookZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5500);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
 
   gotoParkPosition();
-  
 }
 
-void performQueenSideCastle(String moveString) {
+void performQueenSideCastle() {
   int kingZOffset = getPieceZOffset(PieceType::King);
   int rookZOffset = getPieceZOffset(PieceType::Rook);
 
   moveToSquare("e8");
   
   //move down and trigger magnet high
-  zStepperMotor.moveTo(kingZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(kingZOffset);
   digitalWrite(electromagnetPin, HIGH);
   
-  zStepperMotor.moveTo(8200 + kingZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + kingZOffset);
 
   moveToSquare("c8");
 
-  zStepperMotor.moveTo(kingZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(kingZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5500);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
   
   // move the rook
   moveToSquare("a8");
   
   //move down and trigger magnet high
-  zStepperMotor.moveTo(rookZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(rookZOffset);
   digitalWrite(electromagnetPin, HIGH);
   
-  zStepperMotor.moveTo(8200 + rookZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + rookZOffset);
 
   moveToSquare("d8");
   
-  zStepperMotor.moveTo(rookZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(rookZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveTo(5500);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
 
   gotoParkPosition();
 }
 
-// special move here could be for en passant or a capture promotion move
+
 void performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King) {
 
   int pieceZOffset = getPieceZOffset(pieceType);
@@ -410,7 +427,7 @@ void performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType 
   //move down and trigger magnet high
   zStepperMotor.moveToAndWaitForCompletion(capturedPieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
-  zStepperMotor.moveToAndWaitForCompletion(8300 + capturedPieceZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + capturedPieceZOffset);
   
   // go to park position to drop off captured piece
   gotoParkPosition();
@@ -425,15 +442,47 @@ void performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType 
   zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
   digitalWrite(electromagnetPin, HIGH);
 
-  zStepperMotor.moveToAndWaitForCompletion(8000 + pieceZOffset);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + pieceZOffset);
 
   moveToSquare(toSquare);
 
   zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
   digitalWrite(electromagnetPin, LOW);
-  zStepperMotor.moveToAndWaitForCompletion(5500);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
 
   gotoParkPosition();
+}
+
+void performEnPassantMove(char fromSquare[], char toSquare[]) {
+  int pieceZOffset = PieceZAxisOffsets[(int)PieceType::Pawn].value;
+
+  moveToSquare(fromSquare);
+
+  //move down and trigger magnet high
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+
+  // TODO: THIS MAY NEED TO BE TWEAKED FURTHER, for example: pawns do not need to be lifted as high to ensure clearance over every other piece
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + pieceZOffset);
+
+  moveToSquare(toSquare);
+
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
+  digitalWrite(electromagnetPin, LOW);
+  zStepperMotor.moveToAndWaitForCompletion(zAxisReferenceHeight);
+
+  // TODO IF ROBOT IS PLAYING WHITE PIECES THIS WILL BE DIFFERENT (rank 5)
+  // changes this to the square above the "toSquare" to begin the special capture move
+  toSquare[1] = 4;
+
+  moveToSquare(toSquare);
+  zStepperMotor.moveToAndWaitForCompletion(pieceZOffset);
+  digitalWrite(electromagnetPin, HIGH);
+
+  zStepperMotor.moveToAndWaitForCompletion(zAxisTopHeight + pieceZOffset);
+
+  gotoParkPosition();
+  digitalWrite(electromagnetPin, LOW);
 }
 
 void moveToSquare(char square[]) {
@@ -546,13 +595,6 @@ void inverseKinematics(long x, long y) {
 
   xStepperMotor.move(xSteps);
   yStepperMotor.move(ySteps);
-  
-  // while (xStepperMotor.motor.distanceToGo() != 0 || 
-  //        yStepperMotor.motor.distanceToGo() != 0) {
-    
-  //   xStepperMotor.motor.run();
-  //   yStepperMotor.motor.run();
-  // }
 }
 
 uint8_t splitString(const char* input, char delimiter, char tokens[][28], uint8_t maxTokens = 5) {
@@ -751,10 +793,11 @@ void handleArmMove(const char* move) {
 
 
   // adds arm move to the movelist
+  addMove(moveString);
   // if the move string returned comes in the format "bestmove b1c3|movedPiece", must be quiet move
   if(tokenCount <= 2) {
-    addMove(moveString);
     performQuietMove(fromSquare, toSquare, stringToPieceType(tokens[1]));
+    editSquareStates(fromSquareIndex, toSquareIndex);
   } else {
     int8_t specialMoveTokenIndex = -1;
     int8_t capturedPieceTokenIndex = -1;
@@ -772,27 +815,53 @@ void handleArmMove(const char* move) {
       }
     }
 
-    // handle these other move scenarios
-    if(capturedPieceTokenIndex != -1) {
-      // perform capture move
-      performCaptureMove(fromSquare, toSquare, stringToPieceType(tokens[1]), stringToPieceType(tokens[capturedPieceTokenIndex]));
-    }
 
     if(specialMoveTokenIndex != -1) {
       // perform special moves
-    }
+      Serial.println("SPECIAL MOVE:");
+      Serial.println(tokens[specialMoveTokenIndex]);
 
-    if(promotionTokenIndex != -1) {
-      // do promotions
+      if(strcasestr(tokens[specialMoveTokenIndex], "kingsidecastle") != nullptr) {
+        Serial.println("performing kingside castle...");
+        // do kingside castle move
+        performKingSideCastle();
+        editSquareStates(61, 63);
+        editSquareStates(64, 62);
+      } else if(strcasestr(tokens[specialMoveTokenIndex], "queensidecastle") != nullptr) {
+        Serial.println("performing queenide castle...");
+        // do queenside castle move
+        performQueenSideCastle();
+        editSquareStates(61, 59);
+        editSquareStates(57, 60);
+      } else {
+        Serial.println("performing en passant...");
+        // must be en passant
+        performEnPassantMove(fromSquare, toSquare);
+
+        // TODO: this will need to be changed depending on color of user pieces
+        editSquareStates(fromSquareIndex, toSquareIndex);
+        squareStates[toSquareIndex + 8].status = SquareStatus::Empty;
+        squareStates[toSquareIndex + 8].color = SquareColor::None;
+      }
+
+    } else {
+      // handle these other move scenarios
+      if(capturedPieceTokenIndex != -1) {
+        // perform capture move
+        performCaptureMove(fromSquare, toSquare, stringToPieceType(tokens[1]), stringToPieceType(tokens[capturedPieceTokenIndex]));
+        editSquareStates(fromSquareIndex, toSquareIndex);
+      }
+
+      if(promotionTokenIndex != -1) {
+        // do promotions
+      }
     }
   }
-
-  editSquareStates(fromSquareIndex, toSquareIndex);
-
   printMoveHistory();
 
   // swap back to user turn to move   
   resetPieceDetectionParameters();
+  updateCurrentBoardState();
   userSideToMove = true;
 
   request_end_engine_turn();
@@ -864,13 +933,13 @@ String combineSquareStrings(int fromSquare, int toSquare) {
 
 
 void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = false) {
-  // do not poll board if a game is not active
-  if(!activeGame) {
+  // do not poll board if it is not the user's turn
+  if(!isUserSideToMove) {
     return;
   }
 
-  // do not poll board if it is not the user's turn
-  if(!isUserSideToMove) {
+  // do not poll board if a game is not active
+  if(!activeGame) {
     return;
   }
 
@@ -920,8 +989,8 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
   numPiecesPickedUp = friendlyPieceCount;
 
   for(int i = 0; i < 64; i++) {
-    if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == 1) {
-      if (currentBoardState[i].color == 2) {
+    if (currentBoardState[i].status != squareStates[i].status && squareStates[i].status == SquareStatus::Occupied) {
+      if (squareStates[i].color == SquareColor::Black) {
         potentialMovedToSquare = i + 1;
         captureMove = true;
         Serial.print("Potential moved to square (capture): ");
@@ -932,7 +1001,7 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
 
   
   for(int i = 0; i < 64; i++) {
-    if (currentBoardState[i].status == SquareStatus::Occupied && squareStates[i].status == SquareStatus::Empty && !captureMove) {
+    if (currentBoardState[i].status == SquareStatus::Occupied && squareStates[i].status == SquareStatus::Empty) {
       potentialMovedToSquare = i + 1;
       Serial.print("Potential moved to square (quiet move): ");
       Serial.println(potentialMovedToSquare);
@@ -959,20 +1028,24 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
   if(!captureMove) {
     Serial.print("Potential moved to square (quiet move): ");
   } else {
-      Serial.print("Potential moved to square (capture move): ");
+    Serial.print("Potential moved to square (capture move): ");
   }
   Serial.println(potentialMovedToSquare);
 
+  Serial.print("Number of picked up pieces: ");
+  Serial.println(numPiecesPickedUp);
+
   // Check move validity
-  if (potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) {
+  if ((potentialMovedFromSquare == -1 || potentialMovedToSquare == -1) && numPiecesPickedUp < 2) {
     Serial.println("ERROR - Retry");
     return;  // Retry instead of recurse
   }
 
   String finalizedMove;
-
+  
   // DEBUGGING INFO TODO: REFACTOR LATER
   if (numPiecesPickedUp >= 2) {
+    Serial.println("Picked up two or more pieces.");
     if (potentialMovedToSquare == 6 || potentialMovedToSquare == 7) {
       // editSquareStates(4, 6);
       // editSquareStates(7, 5);
@@ -1013,6 +1086,8 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
     }
 
     addMove(finalizedMove.c_str());
+    //swap to computer move
+    userSideToMove = false;
   }
 }
 
@@ -1022,12 +1097,12 @@ void boardStartNewGame() {
 
   clearMoveHistory();
   moveCount = 0;
-  activeGame = true;
-  // TODO: depending on if user is playing white or black, this might need to change
-  userSideToMove = true;
   instantiateBoardState();
   updateCurrentBoardState();
   resetPieceDetectionParameters();
+  activeGame = true;
+  // TODO: depending on if user is playing white or black, this might need to change
+  userSideToMove = true;
 }
 
 void setupBoard() {

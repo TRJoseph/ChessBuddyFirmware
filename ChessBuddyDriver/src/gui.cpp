@@ -1218,19 +1218,30 @@ void setup_start_game_screen() {
 
 void clock_timer(lv_timer_t * timer)
 {
-  lv_obj_t * selected_clock_label = (lv_obj_t *) lv_timer_get_user_data(timer);
+    lv_obj_t * selected_clock_label = (lv_obj_t *) lv_timer_get_user_data(timer);
 
+    int minutes;
+    int seconds;
 
-    if (user_total_seconds > 0) {
-        user_total_seconds--;
+    if(userSideToMove) {
+        if (user_total_seconds > 0) {
+            user_total_seconds--;
+        }
+        minutes = user_total_seconds / 60;
+        seconds = user_total_seconds % 60;
+    } else {
+        if (computer_total_seconds > 0) {
+            computer_total_seconds--;
+        }
+        minutes = computer_total_seconds / 60;
+        seconds = computer_total_seconds % 60;
     }
 
-    user_minutes = user_total_seconds / 60;
-    user_seconds = user_total_seconds % 60;
+    
 
     //Serial.write("Decrementing...");
     char clk_buf[10];
-    snprintf(clk_buf, sizeof(clk_buf), "%02d:%02d", user_minutes, user_seconds);
+    snprintf(clk_buf, sizeof(clk_buf), "%02d:%02d", minutes, seconds);
 
     lv_label_set_text(selected_clock_label, clk_buf);
 
@@ -1260,7 +1271,7 @@ void end_turn_btn_handler(lv_event_t * e)
         
 
         // swap to computer move
-        userSideToMove = false;
+        //userSideToMove = false;
 
         // scan last time to get finalized move
         scanningUserMove(true, true);
@@ -1273,7 +1284,7 @@ void end_turn_btn_handler(lv_event_t * e)
         xTaskCreatePinnedToCore(
             getBestMoveTask,     // Task function
             "GetBestMoveTask",   // Name
-            32768,               // Stack size (in words, 4 bytes each) — adjust as needed
+            8192,               // Stack size (in words, 4 bytes each) — adjust as needed
             NULL,                // Parameters
             3,                   // Priority
             NULL,                // Task handle

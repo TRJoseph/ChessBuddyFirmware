@@ -77,5 +77,4 @@ void setup()
 void loop()
 {
     scanningUserMove(userSideToMove, false);
-    delay(10);
 }

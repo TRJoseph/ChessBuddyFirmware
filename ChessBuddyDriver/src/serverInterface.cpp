@@ -57,16 +57,16 @@ void getBestMoveFromServer() {
                 const char* move = respDoc["move"];
                 Serial.print("Engine move: ");
                 Serial.println(move);
+                http.end();
                 handleArmMove(move);
             } else {
                 Serial.println("Failed to parse JSON");
+                http.end();
             }
         } else {
             Serial.print("HTTP request failed: ");
             Serial.println(httpResponseCode);
         }
-
-        http.end();
     } else {
         Serial.println("WiFi not connected");
     }
