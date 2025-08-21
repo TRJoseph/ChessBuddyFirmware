@@ -9,7 +9,7 @@ constexpr int ledPin = 17;
 // Shift Register Pins
 constexpr int latchPin = 1;
 constexpr int clockEnablePin = 3;
-constexpr int dataIn = 47;
+constexpr int dataIn = 16;
 constexpr int clockPin = 2;
 
 // Board Size
@@ -34,7 +34,7 @@ enum PieceColor {
 #define Arm_Pins
 
 // in mm
-constexpr long ArmSegment1Length = 260;
+constexpr long ArmSegment1Length = 267;
 constexpr long ArmSegment2Length = 170;
 
 // X Axis motor pins
@@ -60,11 +60,11 @@ constexpr int yLimitPin = 11;
 constexpr int zLimitPin = 12;
 
 // reduction ratios
-constexpr double BaseGearReductionRatio = 5.5;
-constexpr double ArmGearReductionRatio = 22;
+constexpr double BaseGearReductionRatio = 6;
+constexpr double ArmGearReductionRatio = 12.5;
 
 // default config for stepper motors
-constexpr float baseStepperSpeed = 2500.0;
+constexpr float baseStepperSpeed = 1500.0;
 constexpr float baseStepperAccel = 50.0;
 constexpr float baseStepperAccelScalar = 2.5;
 
