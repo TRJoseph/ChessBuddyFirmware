@@ -6,6 +6,7 @@
 #include "wlan.h"
 #include "gui_gateway.h"
 #include "serverInterface.h"
+#include "led_controller.h"
 
 
 /*Set to your screen resolution and rotation*/
@@ -63,6 +64,9 @@ void setup()
 
     /* Initializes the board and arm setup configuration*/
     setupBoard();
+
+    /* Initializes LEDs*/
+    led_setup();
 
     /* Changes to the start screen */
     switch_to_start();

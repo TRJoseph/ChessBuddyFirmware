@@ -5,6 +5,7 @@
 #include "serverInterface.h"
 #include "gui.h"
 #include "gui_gateway.h"
+#include "led_controller.h"
 
 
 // TODO: move these and movehistory variables into a gamestate.cpp/.h file pair
@@ -122,12 +123,12 @@ int SquarePositions[64][2] = {
 // array of key value pairs for each piece offset
 // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
 KeyValuePair PieceZAxisOffsets[] = {
-    {PieceType::Pawn, -5240},
-    {PieceType::Knight, -4480},
-    {PieceType::Bishop, -4000},
-    {PieceType::Rook, -4870},
-    {PieceType::Queen, -3440},
-    {PieceType::King, -2150} // king is good
+    {PieceType::Pawn, -4760},
+    {PieceType::Knight, -4000},
+    {PieceType::Bishop, -3520},
+    {PieceType::Rook, -4390},
+    {PieceType::Queen, -2944},
+    {PieceType::King, -1670} // king is good
 };
 
 int zAxisTopHeight = 8300;
@@ -244,7 +245,7 @@ public:
 // x step pin, y dir pin, limit pin, normal speed, normal acceleration, calibration speed, calibration acceleration
 StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
 StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
-StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 3, 20000, baseStepperSpeed / 3, baseStepperSpeed); 
+StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 3, 20000, baseStepperSpeed, baseStepperSpeed); 
 
 void initializeStepperMotors() {
   stepperEngine.init();
@@ -269,14 +270,14 @@ void runCalibrationRoutine() {
   xStepperMotor.calibrate();
 
   yStepperMotor.calibrate();
-  yStepperMotor.moveTo(10280);
+  yStepperMotor.moveTo(5830);
   yStepperMotor.waitforCompletion();
 
   zStepperMotor.calibrate();
   zStepperMotor.moveTo(11000);
   zStepperMotor.waitforCompletion();
 
-  xStepperMotor.moveTo(729);
+  xStepperMotor.moveTo(1201);
   xStepperMotor.waitforCompletion();
   
   xStepperMotor.setZeroPosition();
@@ -933,20 +934,21 @@ String combineSquareStrings(int fromSquare, int toSquare) {
 
 
 void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = false) {
-  // do not poll board if it is not the user's turn
-  if(!isUserSideToMove) {
-    return;
-  }
-
   // do not poll board if a game is not active
   if(!activeGame) {
+    // run idle led animation
+    idleAnimation();
+    return;
+  }
+  // do not poll board if it is not the user's turn
+  if(!isUserSideToMove) {
     return;
   }
 
   //updateCurrentBoardState();
 
   uint64_t binaryBoardState = readShiftRegisters();
-
+  
   potentialMovedFromSquare = -1;
   numPiecesPickedUp = 0;
   if (!captureMove) potentialMovedToSquare = -1;
@@ -964,13 +966,15 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
   }
   Serial.println();
 
-
   Serial.print("current board state: ");
   for (int i = numBits - 1; i >= 0; i--) {                                                  
     Serial.print(currentBoardState[i].status); // Print each bit
     if (i % 8 == 0) Serial.print(" ");  // Add space after every 8 bits
   }
   Serial.println();
+
+  // updates leds on board to reflect current game status
+  updateLEDs(binaryBoardState);
 
   // Detect move
   int friendlyPieceCount = 0;
