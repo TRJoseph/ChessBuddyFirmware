@@ -7,7 +7,7 @@ This project combines robotics, embedded systems, and AI to create a fully auton
 ### Features
 - **4DOF Robotic Arm** - Custom Designed PCB for main control functions (stepper motor operation, buttons, limit switches, board state, power regulation), 3D printed mechanical design optimized for quick and precise movement using linear and rotational motion
 - **Electronic Chess Board Attachment** - Custom Designed PCB and 3D printed board solution designed to transfer the current board state to the computer. 8x8 grid of hall effect sensors with LEDs for each square corresponding to a square's occupancy state (empty or occupied).
-- **Chess Engine Integration** - The TigerEngine UCI Executable acts as the brain of the robotic arm, pondering the current position and replying with the 'best' move
+- **Chess Engine Integration** - The TigerEngine UCI Executable acts as the brain of the robotic arm, pondering the current position and replying with the 'best' move. The executable is run in the cloud due to lack of resources present on the MCU
 - **Chess Piece Set** - 3D-printable piece set with a mounting point for a magnet on the bottom of each piece
 
 ### Future Plans
