@@ -2,7 +2,7 @@
 This repository contains all the code for communicating with my personal chess engine, TigerEngine, as well as the electronics and mechanical robotic arm that physically plays chess on the board.
 
 ## Overview
-This project combines robotics, embedded systems, and AI to create a fully autonomous chess-playing robotic arm. The system integrates my custom-designed 4DOF robotic arm with an electromagnet end effector or claw grip end effector. The project is controlled by a custom designed ESP32 MCU PCB with stepper motor driver ICs, a power management subsystem, an LCD Screen header + more.
+This project combines robotics, embedded systems, and AI to create a fully autonomous chess-playing robotic arm. The system integrates my very own 4DOF robotic arm with an electromagnet end effector or claw grip end effector. The project is controlled by a custom designed ESP32 MCU PCB with stepper motor driver ICs, a power management subsystem, an LCD screen header + more.
 
 ### Features
 - **4DOF Robotic Arm** - Custom Designed PCB for main control functions (stepper motor operation, buttons, limit switches, board state, power regulation), 3D printed mechanical design optimized for quick and precise movement using linear and rotational motion
