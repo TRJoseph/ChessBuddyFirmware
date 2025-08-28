@@ -12,6 +12,7 @@
 #include "main_logo.h"
 #include "monitor.h"
 #include "robotic_arm.h"
+#include "checkerboard.h"
 
 // Piece Image Includes
 #include "black_pawn.h"
@@ -65,6 +66,10 @@ static lv_obj_t * keyboard;
 
 FT6336U ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN); // Touch controller object
 
+typedef enum {
+    LV_MENU_ITEM_BUILDER_VARIANT_1,
+    LV_MENU_ITEM_BUILDER_VARIANT_2
+} lv_menu_builder_variant_t;
 
 /* STYLES */
 static lv_style_t generic_btn_style;
@@ -74,6 +79,7 @@ static lv_style_t screen_style;
 static lv_style_t active_timer;
 static lv_style_t inactive_timer;
 static lv_style_t calibration_container;
+static lv_style_t temp_slider;
 
 
 /* Variables for Chess Clock Page (active game page) */
@@ -129,6 +135,11 @@ static void style_init(void) {
     lv_style_set_bg_color(&calibration_container, lv_color_hex(0xffffff));
     lv_style_set_bg_opa(&calibration_container, LV_OPA_COVER);
 
+    lv_style_init(&temp_slider);
+    lv_style_set_bg_opa(&temp_slider, LV_OPA_COVER);
+    lv_style_set_bg_color(&temp_slider, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_bg_grad_color(&temp_slider, lv_palette_main(LV_PALETTE_RED));
+    lv_style_set_bg_grad_dir(&temp_slider, LV_GRAD_DIR_HOR);
 }
 
 void start_touch_object() {
@@ -689,11 +700,109 @@ static void run_calibration_handler_settings(lv_event_t * e)
     return;
 }
 
+static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char * txt,
+                              lv_menu_builder_variant_t builder_variant, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256)
+{
+    lv_obj_t * obj = lv_menu_cont_create(parent);
+
+    lv_obj_t * img = NULL;
+    lv_obj_t * label = NULL;
+
+    if(icon) {
+        img = lv_image_create(obj);
+        lv_image_set_src(img, icon);
+        lv_image_set_scale(img, iconScalingFactor);
+    }
+
+    if(txt) {
+        label = lv_label_create(obj);
+        lv_label_set_text(label, txt);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_SCROLL_CIRCULAR);
+        lv_obj_set_flex_grow(label, 1);
+        lv_obj_set_style_text_font(label, fontSize, 0);
+    }
+
+    if(builder_variant == LV_MENU_ITEM_BUILDER_VARIANT_2 && icon && txt) {
+        lv_obj_add_flag(img, LV_OBJ_FLAG_FLEX_IN_NEW_TRACK);
+        lv_obj_swap(img, label);
+    }
+
+    return obj;
+}
+
+static void slider_event_cb(lv_event_t * e)
+{
+    lv_obj_t * slider = lv_event_get_target_obj(e);
+    struct SliderInfo * sliderInfo = (SliderInfo *)lv_event_get_user_data(e);
+    char buf[16];
+    uint32_t sliderParameter;
+
+    if(sliderInfo->t == 0) {
+        // changing velocity slider, in mm/s
+        sliderParameter = lv_slider_get_value(slider) * (baseGearDiameter / stepsPerRevolution);
+        lv_snprintf(buf, sizeof(buf), "%d mm/s", sliderParameter);
+    } else {
+        // changing acceleration slider, in mm/s²
+        sliderParameter = lv_slider_get_value(slider) * 20;
+        lv_snprintf(buf, sizeof(buf), "%d mm/s^2", sliderParameter);
+    }
+    lv_label_set_text(sliderInfo->slider_label, buf);
+    //lv_obj_align_to(sliderInfo->slider_label, slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+}
+
+static lv_obj_t * create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max,
+                                int32_t val, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256)
+{
+    lv_obj_t * obj = create_text(parent, icon, txt, LV_MENU_ITEM_BUILDER_VARIANT_2, fontSize, iconScalingFactor);
+    lv_obj_t * slider = lv_slider_create(obj);
+    lv_obj_t * slider_label = lv_label_create(obj);
+    lv_obj_remove_flag(slider_label, LV_OBJ_FLAG_FLEX_IN_NEW_TRACK);
+    lv_obj_add_flag(slider_label, LV_OBJ_FLAG_FLOATING);
+    char buf[16];
+    uint32_t sliderParameter;
+
+    struct SliderInfo* sliderInfo = new struct SliderInfo;
+    sliderInfo->slider_label = slider_label;
+    sliderInfo->val = val;
+
+    if(strcmp(txt, "Velocity") == 0) {
+        // changing velocity slider, in mm/s
+        sliderInfo->t = 0;
+        sliderParameter = referenceStepperSpeed * (baseGearDiameter / stepsPerRevolution);
+        lv_snprintf(buf, sizeof(buf), "%d mm/s", sliderParameter);
+    } else {
+        // changing acceleration slider, in mm/s²
+        sliderInfo->t = 1;
+        sliderParameter = referenceStepperAccelScalar * 20;
+        lv_snprintf(buf, sizeof(buf), "%d mm/s^2", sliderParameter);
+    }
+
+    lv_label_set_text(slider_label, buf);
+
+    lv_obj_add_event_cb(slider, slider_event_cb, LV_EVENT_VALUE_CHANGED, (void *) sliderInfo);
+    lv_obj_set_flex_grow(slider, 1);
+    lv_slider_set_range(slider, min, max);
+    lv_slider_set_value(slider, val, LV_ANIM_OFF);
+    
+    lv_obj_set_style_pad_right(slider, 10, 0); 
+
+    lv_obj_align_to(slider_label, slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+
+    if(icon == NULL) {
+        lv_obj_add_flag(slider, LV_OBJ_FLAG_FLEX_IN_NEW_TRACK);
+    }
+
+    return slider;
+}
+
+
+
 void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
+    lv_obj_set_flex_flow(arm_mechanics_page, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(arm_mechanics_page, 20, 0);
 
     lv_obj_t* calibration_cont = lv_obj_create(arm_mechanics_page);
     lv_obj_set_size(calibration_cont, 300, 150);
-    lv_obj_center(calibration_cont);
     lv_obj_set_flex_flow(calibration_cont, LV_FLEX_FLOW_COLUMN);
     lv_obj_add_style(calibration_cont, &calibration_container, LV_PART_MAIN);
 
@@ -733,6 +842,21 @@ void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
     lv_label_set_text(calib_btn_label, "Run Calibration Routine");
     lv_obj_center(calib_btn_label);
     lv_obj_set_style_text_font(calib_btn_label, &lv_font_montserrat_20, 0);
+
+    lv_obj_t* other_arm_mechanics_cont = lv_obj_create(arm_mechanics_page);
+    lv_obj_set_size(other_arm_mechanics_cont, 300, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(other_arm_mechanics_cont, LV_FLEX_FLOW_COLUMN);
+    lv_obj_add_style(other_arm_mechanics_cont, &calibration_container, LV_PART_MAIN);
+
+    // TODO: replace last number parameter on this slider
+    lv_obj_t* velocity_slider = create_slider(other_arm_mechanics_cont, (const char *)&lightning, "Velocity", minStepperSpeed, maxStepperSpeed, referenceStepperSpeed);
+    lv_obj_add_style(velocity_slider, &temp_slider, LV_PART_MAIN);
+    lv_obj_add_style(velocity_slider, &temp_slider, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(velocity_slider, lv_color_black(), LV_PART_KNOB);
+    lv_obj_t* accel_slider = create_slider(other_arm_mechanics_cont, (const char *)&rapid_clock, "Acceleration", minStepperAccel, maxStepperAccel, referenceStepperAccelScalar);
+    lv_obj_add_style(accel_slider, &temp_slider, LV_PART_MAIN);
+    lv_obj_add_style(accel_slider, &temp_slider, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(accel_slider, lv_color_black(), LV_PART_KNOB);
 }
 
 void setup_settings_screen() {
@@ -776,6 +900,9 @@ void setup_settings_screen() {
     lv_obj_t * arm_mechanics_sub_page = lv_menu_page_create(settings_menu, "Arm Mechanics");
     setup_arm_mechanics_subpage(arm_mechanics_sub_page);
 
+    lv_obj_t * chessboard_sub_page = lv_menu_page_create(settings_menu, "Board Settings");
+    //setup_board_subpage(chessboard_sub_page);
+
     /*Create a main page*/
     main_page = lv_menu_page_create(settings_menu, "Settings");
     
@@ -812,7 +939,7 @@ void setup_settings_screen() {
     lv_label_set_long_mode(display_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(display_cont_label, 1);
 
-    // ROBOTIC ARM MECHANICS PAGE (IMPORTANT)
+    // ROBOTIC ARM MECHANICS SETTINGS PAGE (IMPORTANT)
     // for settings related to the chess buddy arm
     cont = lv_menu_cont_create(main_page);
     lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
@@ -827,6 +954,22 @@ void setup_settings_screen() {
     lv_label_set_text(robotic_arm_cont_label, "Arm Mechanics");
     lv_label_set_long_mode(robotic_arm_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(robotic_arm_cont_label, 1);
+
+    // ELECTRONIC CHESS BOARD SETTINGS PAGE
+    // settings related to the configuration/behavior of the chessboard
+    cont = lv_menu_cont_create(main_page);
+    lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
+
+    lv_menu_set_load_page_event(settings_menu, cont, chessboard_sub_page);
+
+    lv_obj_t *chessboard_image = lv_image_create(cont);
+    lv_image_set_src(chessboard_image, &checkerboard);
+
+    lv_obj_t *chessboard_cont_label = lv_label_create(cont);
+    lv_label_set_text(chessboard_cont_label, "Board Settings");
+    lv_label_set_long_mode(chessboard_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_flex_grow(chessboard_cont_label, 1);
 
 
     lv_menu_set_page(settings_menu, main_page);

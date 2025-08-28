@@ -63,10 +63,8 @@ constexpr int zLimitPin = 12;
 constexpr double BaseGearReductionRatio = 6;
 constexpr double ArmGearReductionRatio = 12.5;
 
-// default config for stepper motors
-constexpr float baseStepperSpeed = 1500.0;
-constexpr float baseStepperAccel = 50.0;
-constexpr float baseStepperAccelScalar = 2.5;
+// in mm
+constexpr float baseGearDiameter = 76.394;
 
 
 #endif

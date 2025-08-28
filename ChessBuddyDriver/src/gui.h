@@ -38,6 +38,12 @@ typedef struct {
 
 static SidesContainer sides_container;
 
+struct SliderInfo {
+    lv_obj_t *slider_label;
+    int32_t val;
+    byte t;
+};
+
 
 void initializeGUI();
 

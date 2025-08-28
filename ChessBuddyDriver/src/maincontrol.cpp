@@ -134,6 +134,21 @@ KeyValuePair PieceZAxisOffsets[] = {
 int zAxisTopHeight = 8300;
 int zAxisReferenceHeight = 5800;
 
+// default config for stepper motors (these will be changed to be preference key value pairs so that the user can edit)
+float referenceStepperSpeed = 1500.0;
+float referenceStepperAccelScalar = 2;
+
+// these shouldnt change and are not adjustable by the user
+const uint32_t referenceStepperCalibSpeed = 1000;
+const uint32_t referenceStepperCalibAccel = 1500;
+
+const uint16_t maxStepperSpeed = 2000;
+const uint16_t minStepperSpeed = 1000;
+const uint8_t maxStepperAccel = 4;
+const uint8_t minStepperAccel = 1;
+
+
+
 FastAccelStepperEngine stepperEngine = FastAccelStepperEngine();
 
 /* THINGS TO NOTE:
@@ -243,9 +258,9 @@ public:
 };
 
 // x step pin, y dir pin, limit pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, baseStepperSpeed / 3, baseStepperSpeed, baseStepperSpeed / 10, baseStepperSpeed);
-StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, baseStepperSpeed, baseStepperSpeed, baseStepperSpeed / 3, baseStepperSpeed);
-StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, baseStepperSpeed * 3, 20000, baseStepperSpeed, baseStepperSpeed); 
+StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, referenceStepperSpeed / 3, referenceStepperCalibAccel, referenceStepperCalibSpeed / 10, referenceStepperCalibAccel);
+StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, referenceStepperSpeed, referenceStepperCalibAccel, referenceStepperCalibSpeed / 3, referenceStepperCalibAccel);
+StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, referenceStepperSpeed * 3, 20000, referenceStepperCalibSpeed, referenceStepperCalibAccel); 
 
 void initializeStepperMotors() {
   stepperEngine.init();
@@ -588,10 +603,10 @@ void inverseKinematics(long x, long y) {
   }
 
   // Scale each motor's speed to its share of the move
-  float xSpeed = baseStepperSpeed * ((float)xAbsSteps / maxSteps);
-  float ySpeed = baseStepperSpeed * ((float)yAbsSteps / maxSteps);
-  xStepperMotor.setCustomMotorSpeedAccel((uint32_t)xSpeed, (uint32_t)(xSpeed * baseStepperAccelScalar));
-  yStepperMotor.setCustomMotorSpeedAccel((uint32_t)ySpeed,(uint32_t)(ySpeed * baseStepperAccelScalar));
+  float xSpeed = referenceStepperSpeed * ((float)xAbsSteps / maxSteps);
+  float ySpeed = referenceStepperSpeed * ((float)yAbsSteps / maxSteps);
+  xStepperMotor.setCustomMotorSpeedAccel((uint32_t)xSpeed, (uint32_t)(xSpeed * referenceStepperAccelScalar));
+  yStepperMotor.setCustomMotorSpeedAccel((uint32_t)ySpeed,(uint32_t)(ySpeed * referenceStepperAccelScalar));
 
 
   xStepperMotor.move(xSteps);

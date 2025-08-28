@@ -25,6 +25,15 @@ extern int potentialMovedToSquare;
 extern int numPiecesPickedUp;
 extern bool captureMove;
 
+// stepper motor configuration
+extern float referenceStepperSpeed;
+extern float referenceStepperAccelScalar;
+extern const uint16_t maxStepperSpeed;
+extern const uint16_t minStepperSpeed;
+extern const uint8_t maxStepperAccel;
+extern const uint8_t minStepperAccel;
+
+
 enum class SpecialMove {
     None,
     Castling, 
