@@ -1,5 +1,5 @@
-# ChessBuddyDriver
-This repository contains all the code for communicating with my personal chess engine, TigerEngine, as well as the electronics and mechanical robotic arm that physically plays chess on the board.
+# ChessBuddyFirmware
+This repository contains all the driver code for communicating with my personal chess engine, TigerEngine, as well as the electronics and mechanical robotic arm that physically plays chess on the board.
 
 ## Overview
 This project combines robotics, embedded systems, and AI to create a fully autonomous chess-playing robotic arm. The system integrates my very own 4DOF robotic arm with an electromagnet end effector or claw grip end effector. The project is controlled by a custom designed ESP32 MCU PCB with stepper motor driver ICs, a power management subsystem, an LCD screen header + more.
