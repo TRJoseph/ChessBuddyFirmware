@@ -1,4 +1,4 @@
-# TigerEngineRoboticsDriver
+# ChessBuddyDriver
 This repository contains all the code for communicating with my personal chess engine, TigerEngine, as well as the electronics and mechanical robotic arm that physically plays chess on the board.
 
 ## Overview
