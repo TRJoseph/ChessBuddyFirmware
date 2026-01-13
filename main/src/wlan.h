@@ -4,7 +4,7 @@
 #include <WiFi.h>
 #include <lvgl.h>
 
-struct Network {
+struct cNetwork {
   int num;
   String ssid;
   int rssi;
@@ -12,7 +12,7 @@ struct Network {
   String encryptionType;
 };
 
-void freeNetworks(struct Network* networks);
+void freeNetworks(struct cNetwork* networks);
 void startWifiScan();
 void connectToWifiNetwork(const String& ssid, const String& password);
 void connectToWifiNetworkBlocking(const String& ssid, const String& password);

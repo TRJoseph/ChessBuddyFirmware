@@ -143,7 +143,7 @@ void request_wifi_icon_update(wl_status_t wifiStatus) {
     xQueueSend(guiQueue, &msg, portMAX_DELAY);
 }
 
-void request_wifi_list_update(int networkCount, struct Network* networks) {
+void request_wifi_list_update(int networkCount, struct cNetwork* networks) {
     WifiListUpdateData* data = new WifiListUpdateData{
         .networkCount = networkCount,
         .networks = networks

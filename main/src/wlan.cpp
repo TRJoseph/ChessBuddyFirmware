@@ -9,7 +9,7 @@
 
 Preferences prefs;
 
-struct Network* networksList = NULL;
+struct cNetwork* networksList = NULL;
 int networkCount = 0;
 unsigned long scanStartTime = 0;
 
@@ -216,7 +216,7 @@ int getWifiSignalStrength() {
     return WiFi.RSSI();
 }
 
-void freeNetworks(struct Network* networks) {
+void freeNetworks(struct cNetwork* networks) {
     if (networks != NULL) {
         delete[] networks;
     }
@@ -239,7 +239,7 @@ void processWifiState(lv_timer_t * timer) {
           // count should be 0
           request_wifi_list_update(networkCount, networksList);
         } else {
-          networksList = new struct Network[networkCount];
+          networksList = new struct cNetwork[networkCount];
           for (int i = 0; i < networkCount; ++i) {
             networksList[i].num = i + 1;
             networksList[i].ssid = WiFi.SSID(i).c_str();
@@ -361,7 +361,7 @@ void startWifiScan() {
   // IF WIFI IS IN CONNECTED STATE AND A SCAN IS ATTEMPTED, SIMPLY REMOVE THE LOADING SPINNER AND ADD THE CONNECTED NETWORK ONLY
   if(wifiStatus == WL_CONNECTED) {
 
-    struct Network* currentNetwork = new struct Network[1];
+    struct cNetwork* currentNetwork = new struct cNetwork[1];
 
     currentNetwork[0].num = 1;
     currentNetwork[0].ssid = strdup(WiFi.SSID().c_str()); // Make a copy of the SSID string

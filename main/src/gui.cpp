@@ -462,7 +462,7 @@ void disconnect_network_submenu_handler(lv_event_t * e) {
 
 
 // scan end callback, updates the wifi network list within settings
-void updateWifiNetworkList(int networkCount, struct Network* networks) {
+void updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
 
   // ends UI spinner to indicate the networks are loaded
   if (loading_spinner) {

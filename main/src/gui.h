@@ -7,7 +7,7 @@
 
 
 struct NetworkInfo {
-    struct Network network;
+    struct cNetwork network;
     lv_obj_t* network_sub_page;
     lv_obj_t* container;
 };
@@ -76,7 +76,7 @@ static void back_button_handler(lv_event_t * e);
 
 // wifi-related function declarations
 void updateWifiWidget(wl_status_t wifiStatus);
-void updateWifiNetworkList(int networkCount, struct Network* networks);
+void updateWifiNetworkList(int networkCount, struct cNetwork* networks);
 
 // misc
 void end_engine_turn_handler();

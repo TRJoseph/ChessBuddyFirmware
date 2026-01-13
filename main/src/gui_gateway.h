@@ -34,7 +34,7 @@ struct WifiUpdateData {
 
 struct WifiListUpdateData {
     int networkCount;
-    Network* networks;
+    cNetwork* networks;
 };
 
 
@@ -45,7 +45,7 @@ void request_screen_switch(lv_obj_t* screen);
 void request_label_update(lv_obj_t* label, const char* newText);
 lv_obj_t* get_active_screen();
 void request_wifi_icon_update(wl_status_t wifiStatus);
-void request_wifi_list_update(int networkCount, struct Network* networks);
+void request_wifi_list_update(int networkCount, struct cNetwork* networks);
 void request_end_engine_turn();
 
 #endif
