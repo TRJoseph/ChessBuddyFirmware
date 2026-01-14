@@ -1,5 +1,4 @@
-#ifndef Chessboard_Pins
-#define Chessboard_Pins
+#pragma once
 
 // Pin Definitions for Electronic Chess Board 
 // ESP32-S3-Mini-1 GPIO mapping
@@ -27,11 +26,6 @@ enum PieceColor {
   white,
   black
 };
-
-#endif // Chessboard_Pins
-
-#ifndef Arm_Pins
-#define Arm_Pins
 
 // in mm
 constexpr long ArmSegment1Length = 267;
@@ -66,7 +60,5 @@ constexpr double ArmGearReductionRatio = 12.5;
 // in mm
 constexpr float baseGearDiameter = 76.394;
 
-
-#endif
 
 //#define M_PI = 3.1415

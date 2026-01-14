@@ -1,109 +1,17 @@
 #include "gui.h"
-#include "FT6336U.h"
-#include "Main_Definitions.h"
-#include "User_Setup.h"
-#include "wlan.h"
-#include <stack>
-#include "serverInterface.h"
-#include "maincontrol.h"
-#include "gui_gateway.h"
 
-// Misc Image Includes
-#include "main_logo.h"
-#include "monitor.h"
-#include "robotic_arm.h"
-#include "checkerboard.h"
+GUI::GUI()
+    :ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN)
+{} 
 
-// Piece Image Includes
-#include "black_pawn.h"
-#include "black_knight.h"
-#include "black_rook.h"
-#include "black_queen.h"
-#include "black_king.h"
-#include "white_pawn.h"
-#include "white_knight.h"
-#include "white_rook.h"
-#include "white_queen.h"
-#include "white_king.h"
-#include "white_king_large.h"
-#include "black_king_large.h"
-
-#include "lightning.h"
-#include "rapid_clock.h"
-
-// Wifi Signal Image Includes
-#include "wifi_off.h"
-#include "wifi_low_strength.h"
-#include "wifi_med_strength.h"
-#include "wifi_full_strength.h"
-
-
-lv_obj_t *start_screen;
-lv_obj_t *wifi_prompt_screen;
-lv_obj_t *settings_screen;
-lv_obj_t *side_select_screen;
-lv_obj_t *difficulty_screen;
-lv_obj_t *time_control_screen;
-lv_obj_t *start_game_screen;
-lv_obj_t *active_game_screen;
-
-struct GameInfo *gameInfo = (struct GameInfo *)malloc(sizeof(struct GameInfo));
-
-std::stack<lv_obj_t*> screen_stack;
-
-lv_obj_t *wifi_icon;
-
-lv_obj_t *settings_menu;
-lv_obj_t * main_page;
-lv_obj_t *wifi_sub_page;
-//lv_obj_t *arm_mechanics_sub_page;
-lv_obj_t *wifiNetworkContainer;
-
-lv_obj_t *loading_spinner;
-
-static lv_obj_t * keyboard;
-
-
-FT6336U ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN); // Touch controller object
-
-typedef enum {
-    LV_MENU_ITEM_BUILDER_VARIANT_1,
-    LV_MENU_ITEM_BUILDER_VARIANT_2
-} lv_menu_builder_variant_t;
-
-/* STYLES */
-static lv_style_t generic_btn_style;
-static lv_style_t nobg_btn_style;
-static lv_style_t alert_btn_style;
-static lv_style_t screen_style;
-static lv_style_t active_timer;
-static lv_style_t inactive_timer;
-static lv_style_t calibration_container;
-static lv_style_t temp_slider;
-
-
-/* Variables for Chess Clock Page (active game page) */
-static int user_total_seconds;
-static int user_minutes;
-static int user_seconds;
-
-lv_timer_t* user_timer;
-
-static int computer_total_seconds;
-static int computer_minutes;
-static int computer_seconds;
-
-lv_timer_t* computer_timer;
-
-// wifi animation images array
-static const lv_image_dsc_t * wifi_anim_arr[3] = {
-  &wifi_low_strength,
-  &wifi_med_strength,
-  &wifi_full_strength
+const lv_image_dsc_t* GUI::wifi_anim_arr[3] = {
+    &wifi_low_strength,
+    &wifi_med_strength,
+    &wifi_full_strength
 };
 
 // Sets up global styles
-static void style_init(void) {
+void GUI::style_init() {
     lv_style_init(&generic_btn_style);
     lv_style_set_radius(&generic_btn_style, 20);
     lv_style_set_bg_color(&generic_btn_style, lv_color_hex(0x041941));
@@ -142,7 +50,7 @@ static void style_init(void) {
     lv_style_set_bg_grad_dir(&temp_slider, LV_GRAD_DIR_HOR);
 }
 
-void start_touch_object() {
+void GUI::start_touch_object() {
     ft6336u.begin();
 
     Serial.print("FT6336U Firmware Version: ");
@@ -151,7 +59,7 @@ void start_touch_object() {
     Serial.println(ft6336u.read_device_mode());
 }
 
-void my_disp_flush( lv_display_t *disp, const lv_area_t *area, uint8_t * px_map)
+void GUI::my_disp_flush( lv_display_t *disp, const lv_area_t *area, uint8_t * px_map)
 {
     /*Copy `px map` to the `area`*/
 
@@ -168,7 +76,7 @@ void my_disp_flush( lv_display_t *disp, const lv_area_t *area, uint8_t * px_map)
 }
 
 /*Read the touchpad*/
-void my_touch_read(lv_indev_t * indev, lv_indev_data_t * data )
+void GUI::my_touch_read(lv_indev_t * indev, lv_indev_data_t * data )
 {
     // if screen is touched
     if(ft6336u.read_td_status() > 0) {
@@ -184,13 +92,13 @@ void my_touch_read(lv_indev_t * indev, lv_indev_data_t * data )
 }
 
 /*use Arduinos millis() as tick source*/
-uint32_t my_tick(void)
+uint32_t GUI::my_tick(void)
 {
     //uint32_t testTime = esp_timer_get_time() / 1000;
     return esp_timer_get_time() / 1000; // Convert microseconds to milliseconds
 }
 
-void start_button_handler(lv_event_t * e)
+void GUI::start_button_handler(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
 
