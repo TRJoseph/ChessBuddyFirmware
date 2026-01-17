@@ -53,8 +53,6 @@ private:
     lv_obj_t *time_control_screen;
     lv_obj_t *start_game_screen;
     lv_obj_t *active_game_screen;
-
-    struct GameInfo *gameInfo;
     
     static std::stack<lv_obj_t*> screen_stack;
 
@@ -68,7 +66,7 @@ private:
 
     lv_obj_t *loading_spinner;
 
-    static lv_obj_t * keyboard;
+    lv_obj_t * keyboard;
 
     //FT6336U ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN); // Touch controller object 
     FT6336U ft6336u; // Touch controller object
@@ -112,6 +110,12 @@ public:
         return gui_instance;
     }
 
+    // this will hold a reference to the GUI singleton as well as any other random data for LVGL callbacks
+    struct GUI_EXTRA {
+        GUI* gui;
+        void* extra;
+    };
+
     struct NetworkInfo {
         struct cNetwork network;
         lv_obj_t* network_sub_page;
@@ -137,10 +141,10 @@ public:
     };
 
     // this struct holds each sides area container on the chess clock active game menu
-    typedef struct {
+    struct SidesContainer{
         lv_obj_t* user_side_container;
         lv_obj_t* computer_side_container;
-    } SidesContainer;
+    };
 
     static SidesContainer sides_container;
 
@@ -150,12 +154,20 @@ public:
         byte t;
     };
 
+    GameInfo gameInfo;
 
     void initializeGUI();
+
+    lv_obj_t* create_text(lv_obj_t * parent, const char * icon, const char * txt,
+                              lv_menu_builder_variant_t builder_variant, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256);
+    lv_obj_t* create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max,
+                                int32_t val, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256);
+    char* get_time_control_label(TimeControl time_control_value);
 
     void start_touch_object();
 
     // screen function definitions
+    // main pages
     void setup_top_layer();
     void setup_start_screen();
     void setup_wifi_prompt_screen();
@@ -164,9 +176,14 @@ public:
     void setup_side_select_screen();
     void setup_start_game_screen();
     void setup_active_game_screen();
+    void setup_time_control_screen();
+    void setup_screen_template(lv_obj_t * screen, char* title);
+
+    // sub pages
+    void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page);
+
 
     void switch_to_start();
-
     void static switch_to_screen(lv_obj_t* new_screen);
     void go_back_screen();
 
@@ -176,11 +193,26 @@ public:
 
     static void style_init(void);
 
-
-    // button handler definitions
+    // LVGL event handlers (button handler definitions)
     static void start_button_handler(lv_event_t * e);
     static void settings_button_handler(lv_event_t * e);
-    static void back_button_handler(lv_event_t * e);
+    static void settings_button_handler_special(lv_event_t * e);
+    static void back_event_handler(lv_event_t * e);
+    static void default_back_btn_handler(lv_event_t * e);
+    static void wifi_submenu_handler(lv_event_t * e);
+    static void wifi_credentials_handler(lv_event_t * e);
+    static void network_submenu_handler(lv_event_t * e);
+    static void disconnect_network_submenu_handler(lv_event_t * e);
+    static void execute_calibration_routine_handler_settings(lv_event_t * e);
+    static void run_calibration_handler_settings(lv_event_t * e);
+    static void slider_event_cb(lv_event_t * e);
+    static void side_select_btn_handler(lv_event_t * e);
+    static void difficulty_btn_handler(lv_event_t * e);
+    static void time_control_btn_handler(lv_event_t * e);
+    static void execute_calibration_routine_handler(lv_event_t * e);
+    static void start_game_btn_handler(lv_event_t * e);
+    static void end_turn_btn_handler(lv_event_t * e);
+    static void end_game_button_handler(lv_event_t * e);
 
     // wifi-related function declarations
     void updateWifiWidget(wl_status_t wifiStatus);
@@ -188,7 +220,8 @@ public:
 
     // misc
     void end_engine_turn_handler();
-
+    void calibration_handler_popup();
+    void clock_timer(lv_timer_t * timer);
 };
 
 

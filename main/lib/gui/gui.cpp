@@ -100,35 +100,39 @@ uint32_t GUI::my_tick(void)
 
 void GUI::start_button_handler(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
         if(WiFi.status() == WL_CONNECTED) {
             // go to first setup page
-            switch_to_screen(side_select_screen);
+            switch_to_screen(gui->side_select_screen);
             //switch_to_side_select_screen();
         } else {
             // go to settings prompt page
-            switch_to_screen(wifi_prompt_screen);
+            switch_to_screen(gui->wifi_prompt_screen);
             //switch_to_wifi_prompt_screen();
         }
-
-
     }
     else if(code == LV_EVENT_VALUE_CHANGED) {
         LV_LOG_USER("Toggled");
     }
 }
 
-void settings_button_handler(lv_event_t * e)
+void GUI::settings_button_handler(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
         //switch_to_settings();
-        switch_to_screen(settings_screen);
+        switch_to_screen(gui->settings_screen);
 
     }
     else if(code == LV_EVENT_VALUE_CHANGED) {
@@ -136,73 +140,84 @@ void settings_button_handler(lv_event_t * e)
     }
 }
 
-void settings_button_handler_special(lv_event_t * e)
+void GUI::settings_button_handler_special(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        lv_screen_load(settings_screen);
+        lv_screen_load(gui->settings_screen);
     }
     else if(code == LV_EVENT_VALUE_CHANGED) {
         LV_LOG_USER("Toggled");
     }
 }
 
-static void back_event_handler(lv_event_t * e)
+void GUI::back_event_handler(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_obj_t * obj = lv_event_get_target_obj(e);
-    lv_obj_t * settings_menu = (lv_obj_t *)lv_event_get_user_data(e);
     
-    if(lv_menu_back_button_is_root(settings_menu, obj)) {
-        go_back_screen();
+    if(lv_menu_back_button_is_root(gui->settings_menu, obj)) {
+        gui->go_back_screen();
     }
 }
 
-static void default_back_btn_handler(lv_event_t * e)
+void GUI::default_back_btn_handler(lv_event_t * e)
 {
-    lv_obj_t * obj = lv_event_get_target_obj(e);
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        go_back_screen();
+        gui->go_back_screen();
     }   
 }
 
-
-
-void wifi_submenu_handler(lv_event_t * e) {
+void GUI::wifi_submenu_handler(lv_event_t * e) {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
 
     // TODO: add some sort of UI spinner or something to indicate the networks are being loaded
 
-    lv_obj_t *child = lv_obj_get_child(wifi_sub_page, 0);
+    lv_obj_t *child = lv_obj_get_child(gui->wifi_sub_page, 0);
     while (child != NULL) {
-        lv_obj_t *next = lv_obj_get_child(wifi_sub_page, 1); // always get next from index 1
+        lv_obj_t *next = lv_obj_get_child(gui->wifi_sub_page, 1); // always get next from index 1
         lv_obj_del(child);
         child = next;
     }
 
-    loading_spinner = lv_spinner_create(wifi_sub_page);
-    lv_obj_set_size(loading_spinner, 100, 100);
-    lv_obj_center(loading_spinner);
-    lv_spinner_set_anim_params(loading_spinner, 10000, 200);
+    gui->loading_spinner = lv_spinner_create(gui->wifi_sub_page);
+    lv_obj_set_size(gui->loading_spinner, 100, 100);
+    lv_obj_center(gui->loading_spinner);
+    lv_spinner_set_anim_params(gui->loading_spinner, 10000, 200);
 
     startWifiScan();
 
-    updateWifiWidget(WiFi.status());
+    gui->updateWifiWidget(WiFi.status());
 }
 
-static void ta_event_cb(lv_event_t * e)
+void GUI::wifi_credentials_handler(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+    
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * ta = lv_event_get_target_obj(e);
 
+    // TODO the network info should likely be a class struct
     struct NetworkInfo * networkInfo = (struct NetworkInfo*)lv_event_get_user_data(e);
 
     if(code == LV_EVENT_CLICKED || code == LV_EVENT_FOCUSED) {
         /*Focus on the clicked text area*/
-        if(keyboard != NULL) lv_keyboard_set_textarea(keyboard, ta);
+        if(gui->keyboard != NULL) lv_keyboard_set_textarea(gui->keyboard, ta);
     }
 
     else if(code == LV_EVENT_READY) {
@@ -220,17 +235,17 @@ static void ta_event_cb(lv_event_t * e)
         }
 
         // attempt to connect to network the user clicked the checkbox
-        loading_spinner = lv_spinner_create(networkInfo->network_sub_page);
-        lv_obj_set_size(loading_spinner, 100, 100);
-        lv_obj_center(loading_spinner);
-        lv_spinner_set_anim_params(loading_spinner, 10000, 200);
+        gui->loading_spinner = lv_spinner_create(networkInfo->network_sub_page);
+        lv_obj_set_size(gui->loading_spinner, 100, 100);
+        lv_obj_center(gui->loading_spinner);
+        lv_spinner_set_anim_params(gui->loading_spinner, 10000, 200);
 
         lv_refr_now(NULL);
 
         // FOR NOW I WANT THIS TO BE BLOCKING UNTIL I CAN GET TO DISABLING THE BACK BUTTON, ETC, ETC
         connectToWifiNetworkBlocking(networkInfo->network.ssid, input_text);
 
-        lv_obj_del(loading_spinner);
+        lv_obj_del(gui->loading_spinner);
         lv_obj_clear_flag(networkInfo->container, LV_OBJ_FLAG_HIDDEN);
 
         wl_status_t wifiStatus = WiFi.status();
@@ -270,11 +285,13 @@ static void ta_event_cb(lv_event_t * e)
             lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
         }
 
-        updateWifiWidget(wifiStatus);
+        gui->updateWifiWidget(wifiStatus);
     }
 }
 
-void network_submenu_handler(lv_event_t * e) {
+void GUI::network_submenu_handler(lv_event_t * e) {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
 
     struct NetworkInfo * networkInfo = (struct NetworkInfo*)lv_event_get_user_data(e);
 
@@ -313,7 +330,7 @@ void network_submenu_handler(lv_event_t * e) {
     lv_textarea_set_password_mode(pwd_ta, true);
     lv_textarea_set_one_line(pwd_ta, true);
     lv_obj_set_width(pwd_ta, lv_pct(80));
-    lv_obj_add_event_cb(pwd_ta, ta_event_cb, LV_EVENT_ALL, networkInfo);
+    lv_obj_add_event_cb(pwd_ta, wifi_credentials_handler, LV_EVENT_ALL, networkInfo);
 
     lv_obj_t * success_status_label = lv_label_create(cont);
     lv_label_set_text(success_status_label, "Connected Successfully");
@@ -340,16 +357,18 @@ void network_submenu_handler(lv_event_t * e) {
     lv_obj_set_style_opa(spacer, LV_OPA_TRANSP, 0);
 
     /* Keyboard */
-    keyboard = lv_keyboard_create(cont);
-    lv_obj_set_height(keyboard, 160); 
-    lv_obj_set_width(keyboard, 320);
-    lv_keyboard_set_textarea(keyboard, pwd_ta);
+    gui->keyboard = lv_keyboard_create(cont);
+    lv_obj_set_height(gui->keyboard, 160); 
+    lv_obj_set_width(gui->keyboard, 320);
+    lv_keyboard_set_textarea(gui->keyboard, pwd_ta);
 
     lv_obj_set_scrollbar_mode(networkInfo->network_sub_page, LV_SCROLLBAR_MODE_OFF);
-
 }
 
-void disconnect_network_submenu_handler(lv_event_t * e) {
+void GUI::disconnect_network_submenu_handler(lv_event_t * e) {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     struct NetworkInfo * networkInfo = (struct NetworkInfo*)lv_event_get_user_data(e);
 
     if (!networkInfo) return;
@@ -362,15 +381,15 @@ void disconnect_network_submenu_handler(lv_event_t * e) {
     }
 
     disconnectFromWifiNetwork();
-    lv_menu_clear_history(settings_menu);
-    lv_menu_set_page(settings_menu, main_page);
+    lv_menu_clear_history(gui->settings_menu);
+    lv_menu_set_page(gui->settings_menu, gui->main_page);
     
-    updateWifiWidget(WiFi.status());
+    gui->updateWifiWidget(WiFi.status());
 }
 
 
 // scan end callback, updates the wifi network list within settings
-void updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
+void GUI::updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
 
   // ends UI spinner to indicate the networks are loaded
   if (loading_spinner) {
@@ -441,8 +460,6 @@ void updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
         } else {
             lv_obj_add_event_cb(cont, network_submenu_handler, LV_EVENT_CLICKED, networkInfo);
         }
-
-
     }
   } else {
     lv_obj_t *cont = lv_menu_cont_create(wifi_sub_page);
@@ -453,7 +470,7 @@ void updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
   }
 }
 
-void updateWifiWidget(wl_status_t wifiStatus) {
+void GUI::updateWifiWidget(wl_status_t wifiStatus) {
     // get connection status
     // Delete the previous icon if it exists
     if (wifi_icon) {
@@ -492,12 +509,12 @@ void updateWifiWidget(wl_status_t wifiStatus) {
     }
 }
 
-void setup_top_layer() {
+void GUI::setup_top_layer() {
     style_init();
     updateWifiWidget(WiFi.status());
 }
 
-void setup_start_screen() {
+void GUI::setup_start_screen() {
     start_screen = lv_obj_create(NULL);
 
     // background styling 
@@ -545,7 +562,7 @@ void setup_start_screen() {
     lv_obj_set_style_text_font(settings_btn_icon, &lv_font_montserrat_30, 0);
 }
 
-void setup_wifi_prompt_screen() {
+void GUI::setup_wifi_prompt_screen() {
     wifi_prompt_screen = lv_obj_create(NULL);
 
     lv_obj_set_style_bg_color(wifi_prompt_screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
@@ -574,9 +591,11 @@ void setup_wifi_prompt_screen() {
     lv_obj_set_style_text_font(settings_btn_icon, &lv_font_montserrat_42, 0);
 }
 
-static void execute_calibration_routine_handler_settings(lv_event_t * e)
+void GUI::execute_calibration_routine_handler_settings(lv_event_t * e)
 {
     executeCalibrationData* calibrationData = (executeCalibrationData*) lv_event_get_user_data(e);
+
+    // TODO: make this reference the main control object
     runCalibrationRoutine();
 
     lv_obj_del(lv_obj_get_parent(calibrationData->message_box));
@@ -585,16 +604,16 @@ static void execute_calibration_routine_handler_settings(lv_event_t * e)
     free(calibrationData);
 }
 
-static void run_calibration_handler_settings(lv_event_t * e)
+void GUI::run_calibration_handler_settings(lv_event_t * e)
 {
-    lv_obj_t * obj = (lv_obj_t *) lv_event_get_user_data(e);
+    lv_obj_t * status_icon = (lv_obj_t *) lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
 
     lv_obj_t * mbox1 = lv_msgbox_create(NULL);
 
     // struct to hold message box reference and to hold status icon for updating
     executeCalibrationData* calibrationData = (executeCalibrationData*) malloc(sizeof(executeCalibrationData));
-    calibrationData->status_icon = obj;
+    calibrationData->status_icon = status_icon;
     calibrationData->message_box = mbox1;
 
     lv_msgbox_add_title(mbox1, "Calibration");
@@ -608,8 +627,7 @@ static void run_calibration_handler_settings(lv_event_t * e)
     return;
 }
 
-static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char * txt,
-                              lv_menu_builder_variant_t builder_variant, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256)
+lv_obj_t* GUI::create_text(lv_obj_t * parent, const char * icon, const char * txt, lv_menu_builder_variant_t builder_variant, lv_font_t * fontSize, int iconScalingFactor)
 {
     lv_obj_t * obj = lv_menu_cont_create(parent);
 
@@ -638,7 +656,7 @@ static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char *
     return obj;
 }
 
-static void slider_event_cb(lv_event_t * e)
+void GUI::slider_event_cb(lv_event_t * e)
 {
     lv_obj_t * slider = lv_event_get_target_obj(e);
     struct SliderInfo * sliderInfo = (SliderInfo *)lv_event_get_user_data(e);
@@ -658,8 +676,7 @@ static void slider_event_cb(lv_event_t * e)
     //lv_obj_align_to(sliderInfo->slider_label, slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
 }
 
-static lv_obj_t * create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max,
-                                int32_t val, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256)
+lv_obj_t* GUI::create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val, lv_font_t * fontSize, int iconScalingFactor)
 {
     lv_obj_t * obj = create_text(parent, icon, txt, LV_MENU_ITEM_BUILDER_VARIANT_2, fontSize, iconScalingFactor);
     lv_obj_t * slider = lv_slider_create(obj);
@@ -699,13 +716,11 @@ static lv_obj_t * create_slider(lv_obj_t * parent, const char * icon, const char
     if(icon == NULL) {
         lv_obj_add_flag(slider, LV_OBJ_FLAG_FLEX_IN_NEW_TRACK);
     }
-
+ 
     return slider;
 }
 
-
-
-void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
+void GUI::setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
     lv_obj_set_flex_flow(arm_mechanics_page, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(arm_mechanics_page, 20, 0);
 
@@ -767,7 +782,7 @@ void setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
     lv_obj_set_style_bg_color(accel_slider, lv_color_black(), LV_PART_KNOB);
 }
 
-void setup_settings_screen() {
+void GUI::setup_settings_screen() {
     settings_screen = lv_obj_create(NULL);
 
     settings_menu = lv_menu_create(settings_screen);
@@ -879,11 +894,10 @@ void setup_settings_screen() {
     lv_label_set_long_mode(chessboard_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(chessboard_cont_label, 1);
 
-
     lv_menu_set_page(settings_menu, main_page);
 }
 
-void setup_screen_template(lv_obj_t * screen, char* title) {
+void GUI::setup_screen_template(lv_obj_t * screen, char* title) {
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_color(screen, lv_color_hex(0x0D57A2), 0);
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
@@ -911,24 +925,28 @@ void setup_screen_template(lv_obj_t * screen, char* title) {
     lv_obj_set_style_text_color(title_label, lv_color_hex(0xffffff), 0);
 }
 
-static void side_select_btn_handler(lv_event_t * e)
+void GUI::side_select_btn_handler(lv_event_t * e)
 {
+    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
+    if(!gui_extras || !gui_extras->gui) return;
+    
     lv_obj_t * obj = lv_event_get_target_obj(e);
-    char * selected_side = (char *)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
+
+    char * selected_side = (char*)gui_extras->extra;
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
         Serial.write(selected_side);
-        gameInfo->side_to_play = selected_side;
+        gui_extras->gui->gameInfo.side_to_play = selected_side;
 
         // switch to difficulty screen
         //switch_to_difficulty_screen();
-        switch_to_screen(difficulty_screen);
+        switch_to_screen(gui_extras->gui->difficulty_screen);
     }
 }
 
-void setup_side_select_screen() {
+void GUI::setup_side_select_screen() {
     side_select_screen =  lv_obj_create(NULL);
 
     setup_screen_template(side_select_screen, "Choose Your Side");
@@ -954,12 +972,19 @@ void setup_side_select_screen() {
         &black_king_large
     };
 
+    static GUI::GUI_EXTRA side_select_data[2];
+
     for(int i = 0; i < 2; i++) {
         lv_obj_t * cont = lv_btn_create(parent);
         lv_obj_set_size(cont, 180, 180);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, (void *)sideLabels[i]);
+
+        
+        side_select_data[i].gui = this;
+        side_select_data[i].extra = (void *)sideLabels[i];
+
+        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, &side_select_data[i]);
         lv_obj_set_style_radius(cont, 8, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
@@ -980,25 +1005,28 @@ void setup_side_select_screen() {
 
 }
 
-
-static void difficulty_btn_handler(lv_event_t * e)
+void GUI::difficulty_btn_handler(lv_event_t * e)
 {
+    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
+    if(!gui_extras || !gui_extras->gui) return;
+
     lv_obj_t * obj = lv_event_get_target_obj(e);
-    char * selected_difficulty = (char *)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
+
+    char * selected_difficulty = (char *)gui_extras->extra;
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
         Serial.write(selected_difficulty);
-        gameInfo->difficulty = selected_difficulty;
+        gui_extras->gui->gameInfo.difficulty = selected_difficulty;
 
         // SWITCH TO TIME CONTROL SCREEN
         //switch_to_time_control_screen();
-        switch_to_screen(time_control_screen);
+        switch_to_screen(gui_extras->gui->time_control_screen);
     }
 }
 
-void setup_difficulty_screen() {
+void GUI::setup_difficulty_screen() {
     difficulty_screen = lv_obj_create(NULL);
 
     setup_screen_template(difficulty_screen, "Choose Your Difficulty");
@@ -1030,6 +1058,8 @@ void setup_difficulty_screen() {
         &black_king
     };
 
+    static GUI::GUI_EXTRA difficulty_select_data[5];
+
     // Loop to create 5 containers
     for(int i = 0; i < 5; i++) {
         // Create a horizontal container
@@ -1037,7 +1067,11 @@ void setup_difficulty_screen() {
         lv_obj_set_size(cont, 300, 60);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, (void *)difficultyLevels[i]);
+
+        difficulty_select_data[i].gui = this;
+        difficulty_select_data[i].extra = (void *)difficultyLevels[i];
+
+        lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, &difficulty_select_data[i]);
         lv_obj_set_style_radius(cont, 8, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
@@ -1075,7 +1109,7 @@ void setup_difficulty_screen() {
 //     return TimeControl::TENMINRAPID;
 // }
 
-char * get_time_control_label(TimeControl time_control_value) {
+char* GUI::get_time_control_label(TimeControl time_control_value) {
     switch(time_control_value) {
         case(TimeControl::FIVEMINBLITZ):
             return "5 Min (Blitz)";
@@ -1088,20 +1122,24 @@ char * get_time_control_label(TimeControl time_control_value) {
 }
 
 
-static void time_control_btn_handler(lv_event_t * e)
+void GUI::time_control_btn_handler(lv_event_t * e)
 {
+    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
+    if(!gui_extras || !gui_extras->gui) return;
+
     lv_obj_t * obj = lv_event_get_target_obj(e);
-    TimeControl time_control = *(TimeControl *)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
+
+    TimeControl* time_control = (TimeControl *)gui_extras->extra;
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        gameInfo->time_control = time_control;
+        gui_extras->gui->gameInfo.time_control = *time_control;
 
         // SWITCH TO START GAME SCREEN
         //switch_to_time_control_screen();
-        setup_start_game_screen();
-        switch_to_screen(start_game_screen);
+        gui_extras->gui->setup_start_game_screen();
+        switch_to_screen(gui_extras->gui->start_game_screen);
 
        
         // Serial.print("Difficulty: ");
@@ -1115,7 +1153,7 @@ static void time_control_btn_handler(lv_event_t * e)
     }
 }
 
-void setup_time_control_screen() {
+void GUI::setup_time_control_screen() {
     time_control_screen = lv_obj_create(NULL);
 
     setup_screen_template(time_control_screen, "Choose Time Control");
@@ -1131,7 +1169,7 @@ void setup_time_control_screen() {
     lv_obj_set_style_border_opa(parent, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    static TimeControl timeControls[3] = {
+    TimeControl timeControls[3] = {
         FIVEMINBLITZ,
         TENMINRAPID,
         THIRTYMINRAPID
@@ -1143,6 +1181,8 @@ void setup_time_control_screen() {
         &rapid_clock,
     };
 
+    static GUI::GUI_EXTRA time_control_data[3];
+
     // Loop to create time control containers
     for(int i = 0; i < 3; i++) {
         // Create a horizontal container
@@ -1150,7 +1190,11 @@ void setup_time_control_screen() {
         lv_obj_set_size(cont, 250, 80);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void *)&timeControls[i]);
+
+        time_control_data[i].gui = this;
+        time_control_data[i].extra = (void*)timeControls[i];
+
+        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, &time_control_data[i]);
         lv_obj_set_style_radius(cont, 40, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
@@ -1177,16 +1221,20 @@ void setup_time_control_screen() {
     }
 }
 
-static void execute_calibration_routine_handler(lv_event_t * e)
+void GUI::execute_calibration_routine_handler(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_obj_t* message_box = (lv_obj_t*) lv_event_get_user_data(e);
     
+    // TODO: make this reference the main control object
     runCalibrationRoutine();
 
     lv_obj_del(lv_obj_get_parent(message_box));
 }
 
-static void calibration_handler_popup()
+void GUI::calibration_handler_popup()
 {
     lv_obj_t * mbox1 = lv_msgbox_create(NULL);
 
@@ -1201,8 +1249,11 @@ static void calibration_handler_popup()
     return;
 }
 
-void start_game_btn_handler(lv_event_t * e)
+void GUI::start_game_btn_handler(lv_event_t * e)
 {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
@@ -1210,18 +1261,19 @@ void start_game_btn_handler(lv_event_t * e)
 
         // if arm is calibrated, proceed to game start, else pop up message
         if(calibrationStatus == true) {
-            setup_active_game_screen();
-            switch_to_screen(active_game_screen);
+            gui->setup_active_game_screen();
+            switch_to_screen(gui->active_game_screen);
 
             // initialize the board for a game to start
+            // TODO: make this a refernce to main control object
             boardStartNewGame();
         } else {
-            calibration_handler_popup();
+            gui->calibration_handler_popup();
         }
     }
 }
 
-void setup_start_game_screen() {
+void GUI::setup_start_game_screen() {
 
     if(start_game_screen != NULL) {
         lv_obj_del(start_game_screen); 
@@ -1256,8 +1308,7 @@ void setup_start_game_screen() {
 
     char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User): %s\nTime Control: %s", gameInfo->difficulty, gameInfo->side_to_play, get_time_control_label(gameInfo->time_control));
-
+    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User): %s\nTime Control: %s", gameInfo.difficulty, gameInfo.side_to_play, get_time_control_label(gameInfo.time_control));
 
     lv_obj_t * game_options_label = lv_label_create(start_game_screen);
     lv_label_set_text(game_options_label, buffer);
@@ -1267,7 +1318,7 @@ void setup_start_game_screen() {
 
 }
 
-void clock_timer(lv_timer_t * timer)
+void GUI::clock_timer(lv_timer_t * timer)
 {
     lv_obj_t * selected_clock_label = (lv_obj_t *) lv_timer_get_user_data(timer);
 
@@ -1288,22 +1339,22 @@ void clock_timer(lv_timer_t * timer)
         seconds = computer_total_seconds % 60;
     }
 
-    
-
     //Serial.write("Decrementing...");
     char clk_buf[10];
     snprintf(clk_buf, sizeof(clk_buf), "%02d:%02d", minutes, seconds);
 
     lv_label_set_text(selected_clock_label, clk_buf);
-
 }
 
 
-void end_turn_btn_handler(lv_event_t * e)
+void GUI::end_turn_btn_handler(lv_event_t * e)
 {
+    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
+    if(!gui_extras || !gui_extras->gui) return;
+
     lv_event_code_t code = lv_event_get_code(e);
 
-    SidesContainer * sides = (SidesContainer *)lv_event_get_user_data(e);
+    SidesContainer* sides = (SidesContainer *)gui_extras->extra;
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
@@ -1317,8 +1368,8 @@ void end_turn_btn_handler(lv_event_t * e)
 
 
         // pause the user timer and start the computer's clock
-        lv_timer_pause(user_timer);
-        lv_timer_resume(computer_timer);
+        lv_timer_pause(gui_extras->gui->user_timer);
+        lv_timer_resume(gui_extras->gui->computer_timer);
         
 
         // swap to computer move
@@ -1346,7 +1397,7 @@ void end_turn_btn_handler(lv_event_t * e)
 }
 
 // this is called outside to update the UI when the robot is finished executing its move
-void end_engine_turn_handler() {
+void GUI::end_engine_turn_handler() {
     lv_obj_remove_style(sides_container.computer_side_container, &active_timer, LV_PART_MAIN);
     lv_obj_add_style(sides_container.computer_side_container, &inactive_timer, LV_PART_MAIN);
 
@@ -1359,10 +1410,14 @@ void end_engine_turn_handler() {
     lv_timer_resume(user_timer);
 }
 
-void end_game_button_handler(lv_event_t * e) {
+void GUI::end_game_button_handler(lv_event_t * e) {
+    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
+    if(!gui) return;
+ 
     // TODO: clear the stack if this will switch you back to start screen, else dont
+    // TODO: activegame is a main control object variable
     activeGame = false;
-    switch_to_screen(start_screen);
+    switch_to_screen(gui->start_screen);
 }
 
 ///
