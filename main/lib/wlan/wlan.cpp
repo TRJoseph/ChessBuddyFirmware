@@ -1,29 +1,14 @@
-#include <Preferences.h>
-#include "FT6336U.h"
-#include "Main_Definitions.h"
-#include "User_Setup.h"
-#include <WiFi.h>
 #include "wlan.h"
-#include "gui_gateway.h"
 
+WLAN::WLAN(){
+}
 
-Preferences prefs;
-
-struct cNetwork* networksList = NULL;
-int networkCount = 0;
-unsigned long scanStartTime = 0;
-
-int max_attempts = 10;
-int attempt = 1;
-
-int failedScans = 0;
-
-
-void setup_preferences() {
+void WLAN::setup_preferences() {
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
 
+  // TODO: have preferences object reference instead of doing preference stuff inside of wlan class
   // open prefrences in RW mode
   prefs.begin("WLANPrefs", false);
 
@@ -45,7 +30,6 @@ void setup_preferences() {
     connectToWifiNetwork(ssid, pswrd);
   }
   prefs.end();
-
 }
 
 
@@ -92,9 +76,7 @@ void setup_preferences() {
 //   Serial.println("📡 Scan complete.\n");
 // }
 
-void debugCurrentWifiStatus() {
-
-
+void WLAN::debugCurrentWifiStatus() {
   wl_status_t wifiStatus = WiFi.status();
   Serial.print("Current WiFi status (int): ");
   Serial.println((int)wifiStatus);  // Print numeric value
@@ -131,13 +113,15 @@ void debugCurrentWifiStatus() {
 
 
 void check_wifi_status_timer_cb(lv_timer_t * timer) {
+    WLAN* wlan = static_cast<WLAN*>(lv_timer_get_user_data(timer));
+    if (!wlan) return;
 
     // check if wifi is connected
-    processWifiState(timer);
+    wlan->processWifiState(timer);
 }
 
 
-void connectToWifiNetwork(const String& ssid, const String& password) {
+void WLAN::connectToWifiNetwork(const String& ssid, const String& password) {
   wl_status_t wifiStatus = WiFi.status();
   debugCurrentWifiStatus();
   if (wifiStatus == WL_IDLE_STATUS || 
@@ -152,12 +136,12 @@ void connectToWifiNetwork(const String& ssid, const String& password) {
     // Update UI to show connecting state
     //showWifiConnecting(ssid);
 
-    lv_timer_create(check_wifi_status_timer_cb, 500, NULL);
+    lv_timer_create(check_wifi_status_timer_cb, 500, this);
   }
 }
 
 
-void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
+void WLAN::connectToWifiNetworkBlocking(const String& ssid, const String& password) {
     Serial.println("Connecting to WiFi...");
 
     WiFi.mode(WIFI_STA);
@@ -204,7 +188,7 @@ void connectToWifiNetworkBlocking(const String& ssid, const String& password) {
 }
 
 
-void disconnectFromWifiNetwork() {
+void WLAN::disconnectFromWifiNetwork() {
   Serial.printf("Disconnecting from %s...\n", WiFi.SSID().c_str());
   WiFi.disconnect();
   delay(200);
@@ -212,17 +196,17 @@ void disconnectFromWifiNetwork() {
   request_wifi_icon_update(WL_DISCONNECTED);
 }
 
-int getWifiSignalStrength() {
+int WLAN::getWifiSignalStrength() {
     return WiFi.RSSI();
 }
 
-void freeNetworks(struct cNetwork* networks) {
+void WLAN::freeNetworks(struct cNetwork* networks) {
     if (networks != NULL) {
         delete[] networks;
     }
 }
 
-void processWifiState(lv_timer_t * timer) {
+void WLAN::processWifiState(lv_timer_t * timer) {
   wl_status_t wifiStatus = WiFi.status();
 
   debugCurrentWifiStatus();
@@ -239,6 +223,12 @@ void processWifiState(lv_timer_t * timer) {
           // count should be 0
           request_wifi_list_update(networkCount, networksList);
         } else {
+          //Free previous results if they exist
+          if (networksList != NULL) {
+            freeNetworks(networksList);
+            networksList = NULL;
+          }
+          
           networksList = new struct cNetwork[networkCount];
           for (int i = 0; i < networkCount; ++i) {
             networksList[i].num = i + 1;
@@ -328,8 +318,11 @@ void processWifiState(lv_timer_t * timer) {
   }
 }
 
-void check_scan_status_timer_cb(lv_timer_t * timer) {
-    debugCurrentWifiStatus();
+void WLAN::check_scan_status_timer_cb(lv_timer_t * timer) {
+    WLAN* wlan = static_cast<WLAN*>(lv_timer_get_user_data(timer));
+    if (!wlan) return;
+
+    wlan->debugCurrentWifiStatus();
     // int result = WiFi.scanComplete();
 
     // if (result == WIFI_SCAN_RUNNING) {
@@ -338,7 +331,7 @@ void check_scan_status_timer_cb(lv_timer_t * timer) {
 
     //lv_timer_del(timer);
 
-    processWifiState(timer); 
+    wlan->processWifiState(timer); 
 
     //updateWifiWidget(currentWifiState);
 }
@@ -356,12 +349,16 @@ void check_scan_status_timer_cb(lv_timer_t * timer) {
 
 
 
-void startWifiScan() {
+void WLAN::startWifiScan() {
   wl_status_t wifiStatus = WiFi.status();
   // IF WIFI IS IN CONNECTED STATE AND A SCAN IS ATTEMPTED, SIMPLY REMOVE THE LOADING SPINNER AND ADD THE CONNECTED NETWORK ONLY
   if(wifiStatus == WL_CONNECTED) {
 
-    struct cNetwork* currentNetwork = new struct cNetwork[1];
+    if (currentNetwork) {
+      freeNetworks(currentNetwork);
+      currentNetwork = NULL;
+    }
+    currentNetwork = new struct cNetwork[1];
 
     currentNetwork[0].num = 1;
     currentNetwork[0].ssid = strdup(WiFi.SSID().c_str()); // Make a copy of the SSID string
@@ -381,18 +378,12 @@ void startWifiScan() {
       scanStartTime = millis();
       failedScans = 0;
       
-      //Free previous results if they exist
-      if (networksList != NULL) {
-        freeNetworks(networksList);
-        networksList = NULL;
-      }
-      
       // Start asynchronous WiFi scan
       WiFi.scanNetworks(true); // true = async mode
       
       Serial.println("WiFi scan started");
       
-      lv_timer_create(check_scan_status_timer_cb, 500, NULL);
+      lv_timer_create(check_scan_status_timer_cb, 500, this);
       // TODO: update UI to show wifi scanning animation in lvgl
       //updateWifiScanningUI(true);
 

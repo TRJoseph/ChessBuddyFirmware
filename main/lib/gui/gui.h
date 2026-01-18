@@ -69,7 +69,7 @@ private:
     lv_obj_t * keyboard;
 
     //FT6336U ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN); // Touch controller object 
-    FT6336U ft6336u; // Touch controller object
+    static FT6336U ft6336u; // Touch controller object
 
     typedef enum {
         LV_MENU_ITEM_BUILDER_VARIANT_1,
@@ -117,7 +117,7 @@ public:
     };
 
     struct NetworkInfo {
-        struct cNetwork network;
+        struct WLAN::cNetwork network;
         lv_obj_t* network_sub_page;
         lv_obj_t* container;
     };
@@ -155,8 +155,10 @@ public:
     };
 
     GameInfo gameInfo;
+    std::vector<NetworkInfo> networkInfo;
 
     void initializeGUI();
+    void set_active_game_state();
 
     lv_obj_t* create_text(lv_obj_t * parent, const char * icon, const char * txt,
                               lv_menu_builder_variant_t builder_variant, lv_font_t * fontSize = (lv_font_t *)&lv_font_montserrat_18, int iconScalingFactor = 256);
@@ -188,8 +190,8 @@ public:
     void go_back_screen();
 
     void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t * px_map);
-    void my_touch_read(lv_indev_t * indev, lv_indev_data_t * data);
-    uint32_t my_tick(void);
+    static void my_touch_read(lv_indev_t * indev, lv_indev_data_t * data);
+    static uint32_t my_tick(void);
 
     static void style_init(void);
 
@@ -216,12 +218,12 @@ public:
 
     // wifi-related function declarations
     void updateWifiWidget(wl_status_t wifiStatus);
-    void updateWifiNetworkList(int networkCount, struct cNetwork* networks);
+    void updateWifiNetworkList(int networkCount, struct WLAN::cNetwork* networks);
 
     // misc
     void end_engine_turn_handler();
     void calibration_handler_popup();
-    void clock_timer(lv_timer_t * timer);
+    static void clock_timer(lv_timer_t * timer);
 };
 
 

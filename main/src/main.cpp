@@ -18,6 +18,8 @@
 #define DRAW_BUF_SIZE (TFT_HOR_RES * TFT_VER_RES / 10 * (LV_COLOR_DEPTH / 8))
 uint32_t draw_buf[DRAW_BUF_SIZE / 4];
 
+GUI gui;
+
 #if LV_USE_LOG != 0
 void my_print( lv_log_level_t level, const char * buf )
 {
@@ -34,12 +36,12 @@ void setup()
     Serial.begin( 115200 );
     Serial.println( LVGL_Arduino );
 
-    start_touch_object();
+    gui.start_touch_object();
 
     lv_init();
 
     /*Set a tick source so that LVGL will know how much time elapsed. */
-    lv_tick_set_cb(my_tick);
+    lv_tick_set_cb(gui.my_tick);
 
     /* register print function for debugging */
     #if LV_USE_LOG != 0
@@ -54,13 +56,13 @@ void setup()
     /*Initialize the (dummy) input device driver*/
     lv_indev_t * indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER); /*Touchpad should have POINTER type*/
-    lv_indev_set_read_cb(indev, my_touch_read);
+    lv_indev_set_read_cb(indev, gui.my_touch_read);
 
     // setup wifi preferences and credentials
     setup_preferences();
 
     /* Starts the ChessBuddy GUI */
-    initializeGUI();
+    gui.initializeGUI();
 
     /* Initializes the board and arm setup configuration*/
     setupBoard();
@@ -69,7 +71,7 @@ void setup()
     led_setup();
 
     /* Changes to the start screen */
-    switch_to_start();
+    gui.switch_to_start();
 
     // starts the gateway thread for GUI
     start_gui_gateway_task();

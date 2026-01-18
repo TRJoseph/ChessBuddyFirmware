@@ -1,8 +1,8 @@
 #include "gui.h"
 
-GUI::GUI()
-    :ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN)
-{} 
+GUI::GUI(){} 
+
+FT6336U GUI::ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN);
 
 const lv_image_dsc_t* GUI::wifi_anim_arr[3] = {
     &wifi_low_strength,
@@ -290,16 +290,15 @@ void GUI::wifi_credentials_handler(lv_event_t * e)
 }
 
 void GUI::network_submenu_handler(lv_event_t * e) {
-    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
-    if(!gui) return;
+    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
+    if(!gui_extras || !gui_extras->gui) return;
 
-    struct NetworkInfo * networkInfo = (struct NetworkInfo*)lv_event_get_user_data(e);
+    int index = *(int*)gui_extras->extra;
+    NetworkInfo& networkInfo = gui_extras->gui->networkInfo[index];
 
-    if (!networkInfo) return;
-
-    lv_obj_t *child = lv_obj_get_child(networkInfo->network_sub_page, 0);
+    lv_obj_t *child = lv_obj_get_child(networkInfo.network_sub_page, 0);
     while (child != NULL) {
-        lv_obj_t *next = lv_obj_get_child(networkInfo->network_sub_page, 1); // always get next from index 1
+        lv_obj_t *next = lv_obj_get_child(networkInfo.network_sub_page, 1); // always get next from index 1
         lv_obj_del(child);
         child = next;
     }
@@ -314,8 +313,8 @@ void GUI::network_submenu_handler(lv_event_t * e) {
     // lv_obj_set_flex_grow(network_cont_label, 1);
  
     /* Create a container with vertical flex layout */
-    lv_obj_t *cont = lv_menu_cont_create(networkInfo->network_sub_page);
-    networkInfo->container = cont;
+    lv_obj_t *cont = lv_menu_cont_create(networkInfo.network_sub_page);
+    networkInfo.container = cont;
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);  
     lv_obj_set_size(cont, 320, 440); 
 
@@ -330,7 +329,7 @@ void GUI::network_submenu_handler(lv_event_t * e) {
     lv_textarea_set_password_mode(pwd_ta, true);
     lv_textarea_set_one_line(pwd_ta, true);
     lv_obj_set_width(pwd_ta, lv_pct(80));
-    lv_obj_add_event_cb(pwd_ta, wifi_credentials_handler, LV_EVENT_ALL, networkInfo);
+    lv_obj_add_event_cb(pwd_ta, wifi_credentials_handler, LV_EVENT_ALL, &networkInfo);
 
     lv_obj_t * success_status_label = lv_label_create(cont);
     lv_label_set_text(success_status_label, "Connected Successfully");
@@ -366,30 +365,29 @@ void GUI::network_submenu_handler(lv_event_t * e) {
 }
 
 void GUI::disconnect_network_submenu_handler(lv_event_t * e) {
-    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
-    if(!gui) return;
+    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
+    if(!gui_extras || !gui_extras->gui) return;
 
-    struct NetworkInfo * networkInfo = (struct NetworkInfo*)lv_event_get_user_data(e);
+    int index = *(int *)gui_extras->extra;
+    NetworkInfo nInfoEntry = gui_extras->gui->networkInfo[index];
 
-    if (!networkInfo) return;
-
-    lv_obj_t *child = lv_obj_get_child(networkInfo->network_sub_page, 0);
+    lv_obj_t *child = lv_obj_get_child(nInfoEntry.network_sub_page, 0);
     while (child != NULL) {
-        lv_obj_t *next = lv_obj_get_child(networkInfo->network_sub_page, 1); // always get next from index 1
+        lv_obj_t *next = lv_obj_get_child(nInfoEntry.network_sub_page, 1); // always get next from index 1
         lv_obj_del(child);
         child = next;
     }
 
     disconnectFromWifiNetwork();
-    lv_menu_clear_history(gui->settings_menu);
-    lv_menu_set_page(gui->settings_menu, gui->main_page);
+    lv_menu_clear_history(gui_extras->gui->settings_menu);
+    lv_menu_set_page(gui_extras->gui->settings_menu, gui_extras->gui->main_page);
     
-    gui->updateWifiWidget(WiFi.status());
+    gui_extras->gui->updateWifiWidget(WiFi.status());
 }
 
 
 // scan end callback, updates the wifi network list within settings
-void GUI::updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
+void GUI::updateWifiNetworkList(int networkCount, struct WLAN::cNetwork* networks) {
 
   // ends UI spinner to indicate the networks are loaded
   if (loading_spinner) {
@@ -398,6 +396,7 @@ void GUI::updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
   }
 
   if (networks != NULL && networkCount > 0) {
+    networkInfo.clear();
   
     for(int i = 0; i < networkCount; ++i) {
         // DEBUG INFORMATION
@@ -416,9 +415,12 @@ void GUI::updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
         lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
-        struct NetworkInfo* networkInfo = new struct NetworkInfo;
-        networkInfo->network = networks[i];
-        networkInfo->network_sub_page = network_sub_page;
+        NetworkInfo nInfoEntry;
+        // keeps a copy of a pointer to the network information and its corresponding subpage
+        // this is so that the user may select a subpage and attempt to login to the selected network
+        nInfoEntry.network = networks[i];
+        nInfoEntry.network_sub_page = network_sub_page;
+        networkInfo.push_back(nInfoEntry);
 
         lv_obj_t *wifi_image;
         wifi_image = lv_image_create(cont);
@@ -440,11 +442,15 @@ void GUI::updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
 
         lv_menu_set_load_page_event(settings_menu, cont, network_sub_page);
 
+        GUI::GUI_EXTRA* netData = new GUI::GUI_EXTRA;
+        netData->gui = this;
+        netData->extra = (void*) &networkInfo.back();
+
         // place disconnect button instead of passwords prompt screen 
         if(WiFi.status() == WL_CONNECTED && networkCount == 1) {
             // disconnect from network button
             lv_obj_t *disconnect_btn = lv_button_create(network_sub_page);
-            lv_obj_add_event_cb(disconnect_btn, disconnect_network_submenu_handler, LV_EVENT_CLICKED, networkInfo);
+            lv_obj_add_event_cb(disconnect_btn, disconnect_network_submenu_handler, LV_EVENT_CLICKED, netData);
             lv_obj_align(disconnect_btn, LV_ALIGN_CENTER, 0, 0);
             lv_obj_remove_flag(disconnect_btn, LV_OBJ_FLAG_PRESS_LOCK);
             lv_obj_set_size(disconnect_btn, 200, 80);
@@ -458,7 +464,7 @@ void GUI::updateWifiNetworkList(int networkCount, struct cNetwork* networks) {
 
             return;
         } else {
-            lv_obj_add_event_cb(cont, network_submenu_handler, LV_EVENT_CLICKED, networkInfo);
+            lv_obj_add_event_cb(cont, network_submenu_handler, LV_EVENT_CLICKED, netData);
         }
     }
   } else {
@@ -538,7 +544,7 @@ void GUI::setup_start_screen() {
     // Start button and label
     lv_obj_t *start_btn_label;
     lv_obj_t *start_btn = lv_button_create(start_screen);
-    lv_obj_add_event_cb(start_btn, start_button_handler, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(start_btn, start_button_handler, LV_EVENT_ALL, this);
     lv_obj_align(start_btn, LV_ALIGN_BOTTOM_MID, 0, -50);
     lv_obj_remove_flag(start_btn, LV_OBJ_FLAG_PRESS_LOCK);
     lv_obj_set_size(start_btn, 120, 50);
@@ -554,7 +560,7 @@ void GUI::setup_start_screen() {
     lv_obj_set_size(settings_btn, 50, 50);
     lv_obj_align(settings_btn, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
     lv_obj_add_style(settings_btn, &nobg_btn_style, 0);
-    lv_obj_add_event_cb(settings_btn, settings_button_handler, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(settings_btn, settings_button_handler, LV_EVENT_ALL, this);
 
     lv_obj_t* settings_btn_icon = lv_label_create(settings_btn);
     lv_label_set_text(settings_btn_icon, LV_SYMBOL_SETTINGS);
@@ -583,7 +589,7 @@ void GUI::setup_wifi_prompt_screen() {
     lv_obj_set_size(settings_btn, 80, 80);
     lv_obj_align(settings_btn, LV_ALIGN_CENTER, 0, 80);
     lv_obj_add_style(settings_btn, &nobg_btn_style, 0);
-    lv_obj_add_event_cb(settings_btn, settings_button_handler_special, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(settings_btn, settings_button_handler_special, LV_EVENT_ALL, this);
 
     lv_obj_t* settings_btn_icon = lv_label_create(settings_btn);
     lv_label_set_text(settings_btn_icon, LV_SYMBOL_SETTINGS);
@@ -791,7 +797,7 @@ void GUI::setup_settings_screen() {
     lv_obj_set_style_bg_grad_color(settings_menu, lv_color_hex(0x0D57A2), 0);
     lv_obj_set_style_bg_grad_dir(settings_menu, LV_GRAD_DIR_VER, 0);
 
-    lv_obj_add_event_cb(settings_menu, back_event_handler, LV_EVENT_CLICKED, settings_menu);
+    lv_obj_add_event_cb(settings_menu, back_event_handler, LV_EVENT_CLICKED, this);
     lv_obj_set_size(settings_menu, 320, 480);
     lv_obj_center(settings_menu);
 
@@ -839,7 +845,7 @@ void GUI::setup_settings_screen() {
     
     lv_menu_set_load_page_event(settings_menu, cont, wifi_sub_page);
 
-    lv_obj_add_event_cb(cont, wifi_submenu_handler, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(cont, wifi_submenu_handler, LV_EVENT_CLICKED, this);
 
     lv_obj_t *wifi_full_strength_image = lv_image_create(cont);
     lv_image_set_src(wifi_full_strength_image, &wifi_full_strength);
@@ -907,7 +913,7 @@ void GUI::setup_screen_template(lv_obj_t * screen, char* title) {
     lv_obj_set_size(back_btn, 30, 40);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 6, 4);
     lv_obj_set_style_pad_all(back_btn, 7, 0);
-    lv_obj_add_event_cb(back_btn, default_back_btn_handler, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, default_back_btn_handler, LV_EVENT_CLICKED, this);
     lv_obj_add_style(back_btn, &nobg_btn_style, 0);
 
     // Icon label
@@ -1423,7 +1429,7 @@ void GUI::end_game_button_handler(lv_event_t * e) {
 ///
 /// THIS CONTROLS INTERFACING WITH BOARDCONTROL TO SET UP A NEW GAME
 ///
-void set_active_game_state() {
+void GUI::set_active_game_state() {
     if(active_game_screen != NULL) {
         lv_obj_del(active_game_screen); 
         active_game_screen = NULL;
@@ -1443,7 +1449,7 @@ void set_active_game_state() {
 
 
 // THIS GUI FUNCTION IS EXTRA IMPORTANT AS IT INTERACTS DIRECTLY WITH THE CHESS BOARD ELECTRONICS CODE
-void setup_active_game_screen() {
+void GUI::setup_active_game_screen() {
 
     // TODO: maybe need to do some checks here first to ensure the pieces are in the correct starting arrangement, etc, etc
     set_active_game_state();
@@ -1493,7 +1499,7 @@ void setup_active_game_screen() {
     lv_obj_set_style_radius(spacer, 50, 0);
 
     
-    user_total_seconds = gameInfo->time_control;
+    user_total_seconds = gameInfo.time_control;
     user_minutes = user_total_seconds / 60;
     user_seconds = user_total_seconds % 60;
 
@@ -1507,7 +1513,7 @@ void setup_active_game_screen() {
     lv_obj_set_style_text_font(user_clock, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(user_clock, lv_color_hex(0xffffff), 0);
 
-    computer_total_seconds = gameInfo->time_control;
+    computer_total_seconds = gameInfo.time_control;
     computer_minutes = computer_total_seconds / 60;
     computer_seconds = computer_total_seconds % 60;
 
@@ -1532,13 +1538,13 @@ void setup_active_game_screen() {
     lv_obj_add_event_cb(bottom_button, end_turn_btn_handler, LV_EVENT_CLICKED, (void*)&sides_container);
 }
 
-void switch_to_screen(lv_obj_t* new_screen) {
+void GUI::switch_to_screen(lv_obj_t* new_screen) {
     lv_obj_t* current = lv_screen_active();
     screen_stack.push(current); 
     lv_screen_load(new_screen); 
 }
 
-void go_back_screen() {
+void GUI::go_back_screen() {
     if (!screen_stack.empty()) {
         lv_obj_t* prev_screen = screen_stack.top();
         screen_stack.pop();
@@ -1548,12 +1554,12 @@ void go_back_screen() {
     }
 }
 
-void switch_to_start() {
+void GUI::switch_to_start() {
     lv_screen_load(start_screen);
 }
 
 
-void initializeGUI() {
+void GUI::initializeGUI() {
     setup_top_layer();
     setup_start_screen();
     setup_wifi_prompt_screen();
