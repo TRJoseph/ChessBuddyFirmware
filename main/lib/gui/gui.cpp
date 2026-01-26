@@ -199,7 +199,7 @@ void GUI::wifi_submenu_handler(lv_event_t * e) {
     lv_obj_center(gui->loading_spinner);
     lv_spinner_set_anim_params(gui->loading_spinner, 10000, 200);
 
-    startWifiScan();
+    gui->wlan->startWifiScan();
 
     gui->updateWifiWidget(WiFi.status());
 }
@@ -243,7 +243,7 @@ void GUI::wifi_credentials_handler(lv_event_t * e)
         lv_refr_now(NULL);
 
         // FOR NOW I WANT THIS TO BE BLOCKING UNTIL I CAN GET TO DISABLING THE BACK BUTTON, ETC, ETC
-        connectToWifiNetworkBlocking(networkInfo->network.ssid, input_text);
+        gui->wlan->connectToWifiNetworkBlocking(networkInfo->network.ssid, input_text);
 
         lv_obj_del(gui->loading_spinner);
         lv_obj_clear_flag(networkInfo->container, LV_OBJ_FLAG_HIDDEN);
@@ -356,12 +356,12 @@ void GUI::network_submenu_handler(lv_event_t * e) {
     lv_obj_set_style_opa(spacer, LV_OPA_TRANSP, 0);
 
     /* Keyboard */
-    gui->keyboard = lv_keyboard_create(cont);
-    lv_obj_set_height(gui->keyboard, 160); 
-    lv_obj_set_width(gui->keyboard, 320);
-    lv_keyboard_set_textarea(gui->keyboard, pwd_ta);
+    gui_extras->gui->keyboard = lv_keyboard_create(cont);
+    lv_obj_set_height(gui_extras->gui->keyboard, 160); 
+    lv_obj_set_width(gui_extras->gui->keyboard, 320);
+    lv_keyboard_set_textarea(gui_extras->gui->keyboard, pwd_ta);
 
-    lv_obj_set_scrollbar_mode(networkInfo->network_sub_page, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scrollbar_mode(networkInfo.network_sub_page, LV_SCROLLBAR_MODE_OFF);
 }
 
 void GUI::disconnect_network_submenu_handler(lv_event_t * e) {
@@ -378,7 +378,7 @@ void GUI::disconnect_network_submenu_handler(lv_event_t * e) {
         child = next;
     }
 
-    disconnectFromWifiNetwork();
+    gui_extras->gui->wlan->disconnectFromWifiNetwork();
     lv_menu_clear_history(gui_extras->gui->settings_menu);
     lv_menu_set_page(gui_extras->gui->settings_menu, gui_extras->gui->main_page);
     
@@ -488,7 +488,7 @@ void GUI::updateWifiWidget(wl_status_t wifiStatus) {
         wifi_icon = lv_image_create(lv_layer_top());
         lv_obj_align(wifi_icon, LV_ALIGN_TOP_RIGHT, -5, 8);
 
-        int signalStrength = getWifiSignalStrength();
+        int signalStrength = wlan->getWifiSignalStrength();
         if(signalStrength > -60) {
           // "strong" signal
           lv_image_set_src(wifi_icon, &wifi_full_strength);
@@ -1559,7 +1559,9 @@ void GUI::switch_to_start() {
 }
 
 
-void GUI::initializeGUI() {
+void GUI::initializeGUI(WLAN* wifiRef) {
+    wlan = wifiRef;
+
     setup_top_layer();
     setup_start_screen();
     setup_wifi_prompt_screen();

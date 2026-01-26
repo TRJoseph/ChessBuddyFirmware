@@ -1,14 +1,14 @@
 #include "wlan.h"
 
-WLAN::WLAN(){
-}
+WLAN::WLAN(){}
 
-void WLAN::setup_preferences() {
-
+void WLAN::setup_wlan() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
+}
 
-  // TODO: have preferences object reference instead of doing preference stuff inside of wlan class
+// TODO: have preferences object reference instead of doing preference stuff inside of wlan class
+void WLAN::setup_preferences() {
   // open prefrences in RW mode
   prefs.begin("WLANPrefs", false);
 
@@ -193,7 +193,7 @@ void WLAN::disconnectFromWifiNetwork() {
   WiFi.disconnect();
   delay(200);
   debugCurrentWifiStatus();
-  request_wifi_icon_update(WL_DISCONNECTED);
+  gui_gateway->request_wifi_icon_update(WL_DISCONNECTED);
 }
 
 int WLAN::getWifiSignalStrength() {
@@ -221,7 +221,7 @@ void WLAN::processWifiState(lv_timer_t * timer) {
 
         if (networkCount == 0) {
           // count should be 0
-          request_wifi_list_update(networkCount, networksList);
+          gui_gateway->request_wifi_list_update(networkCount, networksList);
         } else {
           //Free previous results if they exist
           if (networksList != NULL) {
@@ -235,7 +235,6 @@ void WLAN::processWifiState(lv_timer_t * timer) {
             networksList[i].ssid = WiFi.SSID(i).c_str();
             networksList[i].rssi = WiFi.RSSI(i);
             networksList[i].channel = WiFi.channel(i);
-            networksList[i].encryptionType = WiFi.encryptionType(i);
             switch (WiFi.encryptionType(i)) {
               case WIFI_AUTH_OPEN:
                 networksList[i].encryptionType = "open";
@@ -272,7 +271,7 @@ void WLAN::processWifiState(lv_timer_t * timer) {
         }
 
         // TODO: update UI for menu
-        request_wifi_list_update(networkCount, networksList);
+        gui_gateway->request_wifi_list_update(networkCount, networksList);
         WiFi.scanDelete();
 
         // stop the timer
@@ -283,7 +282,7 @@ void WLAN::processWifiState(lv_timer_t * timer) {
         Serial.println("WiFi scan failed");
         if(failedScans >=5) {
           // Update UI to show failed connection
-          request_wifi_icon_update(WL_CONNECT_FAILED);
+          gui_gateway->request_wifi_icon_update(WL_CONNECT_FAILED);
 
           lv_timer_del(timer);
         }
@@ -295,7 +294,7 @@ void WLAN::processWifiState(lv_timer_t * timer) {
         Serial.println("WiFi scan timeout");
         
         // Update UI to show timeout
-        request_wifi_icon_update(WL_CONNECT_FAILED);
+        gui_gateway->request_wifi_icon_update(WL_CONNECT_FAILED);
 
         lv_timer_del(timer);
       }
@@ -307,7 +306,7 @@ void WLAN::processWifiState(lv_timer_t * timer) {
           Serial.println(WiFi.localIP());
           
           // Update UI to show connected state
-          request_wifi_icon_update(WL_CONNECTED);
+          gui_gateway->request_wifi_icon_update(WL_CONNECTED);
           
           // if wifi is connected stop the timer
           lv_timer_del(timer);
@@ -366,7 +365,7 @@ void WLAN::startWifiScan() {
     currentNetwork[0].channel = WiFi.channel();
     currentNetwork[0].encryptionType = "";
 
-    request_wifi_list_update(1, currentNetwork);
+    gui_gateway->request_wifi_list_update(1, currentNetwork);
   } else {
       Serial.println("Resetting WiFi before scan");
       WiFi.mode(WIFI_STA); 

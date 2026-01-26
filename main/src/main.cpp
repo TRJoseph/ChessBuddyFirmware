@@ -9,7 +9,7 @@
 #include "led_controller.h"
 
 
-/*Set to your screen resolution and rotation*/
+/* THE FT6336U SCREEN RES AND ROTATION */
 #define TFT_HOR_RES   320
 #define TFT_VER_RES   480
 #define TFT_ROTATION  LV_DISPLAY_ROTATION_0
@@ -18,7 +18,11 @@
 #define DRAW_BUF_SIZE (TFT_HOR_RES * TFT_VER_RES / 10 * (LV_COLOR_DEPTH / 8))
 uint32_t draw_buf[DRAW_BUF_SIZE / 4];
 
-GUI gui;
+WLAN wlan;
+GUI& gui = GUI::instance();
+
+GUI_GATEWAY gui_gateway(gui, wlan);
+
 
 #if LV_USE_LOG != 0
 void my_print( lv_log_level_t level, const char * buf )
@@ -59,10 +63,11 @@ void setup()
     lv_indev_set_read_cb(indev, gui.my_touch_read);
 
     // setup wifi preferences and credentials
-    setup_preferences();
+    wlan.setup_wlan();
+    wlan.setup_preferences();
 
     /* Starts the ChessBuddy GUI */
-    gui.initializeGUI();
+    gui.initializeGUI(&wlan);
 
     /* Initializes the board and arm setup configuration*/
     setupBoard();
@@ -74,7 +79,7 @@ void setup()
     gui.switch_to_start();
 
     // starts the gateway thread for GUI
-    start_gui_gateway_task();
+    gui_gateway.start_gui_gateway_task();
 
     /* */
     Serial.println( "Setup done" );

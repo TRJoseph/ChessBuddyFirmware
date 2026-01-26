@@ -25,6 +25,8 @@ private:
   int failedScans = 0;
 
   void debugCurrentWifiStatus();
+
+  GUI_GATEWAY* gui_gateway;
 public:
   WLAN();
 
@@ -51,6 +53,7 @@ public:
   static void check_wifi_status_timer_cb(lv_timer_t * timer);
   static void check_scan_status_timer_cb(lv_timer_t * timer);
 
+  void setup_wlan();
   void setup_preferences();
 };
 

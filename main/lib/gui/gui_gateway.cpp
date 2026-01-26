@@ -1,8 +1,19 @@
 #include "gui_gateway.h"
 
-QueueHandle_t guiQueue;
+GUI_GATEWAY::GUI_GATEWAY(GUI& gui, WLAN& wlan) 
+    : wlan(&wlan), gui(&gui), taskHandle(nullptr) {
+    // creates the queue size for this instance
+    guiQueue = xQueueCreate(10, sizeof(GuiMessage));
+}
 
-static void lvgl_gateway_task(void *pvParameters) {
+void GUI_GATEWAY::lvgl_gateway_task(void *pvParameters) {
+    GUI_GATEWAY* instance = static_cast<GUI_GATEWAY*>(pvParameters);
+    
+    // calls the instance method
+    instance->run_gateway_task();
+}
+
+void GUI_GATEWAY::run_gateway_task() {
     const TickType_t delay = pdMS_TO_TICKS(5);
     GuiMessage msg;
     int loopCount = 0;
@@ -14,10 +25,6 @@ static void lvgl_gateway_task(void *pvParameters) {
                     break;
 
                 case GUI_ACTION_UPDATE_LABEL: {
-                    struct LabelUpdateData {
-                        lv_obj_t* label;
-                        char text[64];
-                    };
                     auto* data = static_cast<LabelUpdateData*>(msg.data);
                     lv_label_set_text(data->label, data->text);
                     delete data;
@@ -36,18 +43,19 @@ static void lvgl_gateway_task(void *pvParameters) {
                 }
                 case GUI_ACTION_UPDATE_WIFI_ICON: {
                     WifiUpdateData* data = static_cast<WifiUpdateData*>(msg.data);
-                    updateWifiWidget(data->wifiStatus);
+                    gui->updateWifiWidget(data->wifiStatus);
                     delete data;
                     break;
                 }
                 case GUI_ACTION_UPDATE_WIFI_LIST: {
                     WifiListUpdateData* data = static_cast<WifiListUpdateData*>(msg.data);
-                    updateWifiNetworkList(data->networkCount, data->networks);
+                    gui->updateWifiNetworkList(data->networkCount, data->networks);
                     delete data;
                     break;
                 }
                 case GUI_ACTION_END_ENGINE_TURN: {
-                    end_engine_turn_handler();
+                    gui->end_engine_turn_handler();
+                    break;
                 }
                 default:
                     break;
@@ -65,20 +73,23 @@ static void lvgl_gateway_task(void *pvParameters) {
     }
 }
 
-void start_gui_gateway_task() {
-    guiQueue = xQueueCreate(10, sizeof(GuiMessage));
+void GUI_GATEWAY::start_gui_gateway_task() {
+    // Start GUI gateway task on Core 1
+    // - Passes 'this' pointer so the task can access instance members
+    // - Priority 2 (medium priority)
+    // - Core 1 assignment (with main loop, gui tasks can execute just fine on core 1)
     xTaskCreatePinnedToCore(
         lvgl_gateway_task,
         "LVGL Gateway Task",
         8192,
-        NULL,
+        this,
         2,
-        NULL,
+        &taskHandle,
         1
     );
 }
 
-void request_screen_switch(lv_obj_t* screen) {
+void GUI_GATEWAY::request_screen_switch(lv_obj_t* screen) {
     GuiMessage msg = {
         .action = GUI_ACTION_SWITCH_SCREEN,
         .data = screen
@@ -86,12 +97,7 @@ void request_screen_switch(lv_obj_t* screen) {
     xQueueSend(guiQueue, &msg, portMAX_DELAY);
 }
 
-void request_label_update(lv_obj_t* label, const char* newText) {
-    struct LabelUpdateData {
-        lv_obj_t* label;
-        char text[64];
-    };
-
+void GUI_GATEWAY::request_label_update(lv_obj_t* label, const char* newText) {
     auto* data = new LabelUpdateData;
     data->label = label;
     strncpy(data->text, newText, sizeof(data->text));
@@ -105,7 +111,7 @@ void request_label_update(lv_obj_t* label, const char* newText) {
     xQueueSend(guiQueue, &msg, portMAX_DELAY);
 }
 
-lv_obj_t* get_active_screen() {
+lv_obj_t* GUI_GATEWAY::get_active_screen() {
     lv_obj_t* result = nullptr;
 
     // Create a queue for receiving the response
@@ -132,7 +138,7 @@ lv_obj_t* get_active_screen() {
     return result;
 }
 
-void request_wifi_icon_update(wl_status_t wifiStatus) {
+void GUI_GATEWAY::request_wifi_icon_update(wl_status_t wifiStatus) {
     WifiUpdateData* data = new WifiUpdateData{wifiStatus};
 
     GuiMessage msg = {
@@ -143,7 +149,7 @@ void request_wifi_icon_update(wl_status_t wifiStatus) {
     xQueueSend(guiQueue, &msg, portMAX_DELAY);
 }
 
-void request_wifi_list_update(int networkCount, struct cNetwork* networks) {
+void GUI_GATEWAY::request_wifi_list_update(int networkCount, struct WLAN::cNetwork* networks) {
     WifiListUpdateData* data = new WifiListUpdateData{
         .networkCount = networkCount,
         .networks = networks
@@ -157,7 +163,7 @@ void request_wifi_list_update(int networkCount, struct cNetwork* networks) {
     xQueueSend(guiQueue, &msg, portMAX_DELAY);
 }
 
-void request_end_engine_turn() {
+void GUI_GATEWAY::request_end_engine_turn() {
     GuiMessage msg = {
         .action = GUI_ACTION_END_ENGINE_TURN,
         .data = NULL

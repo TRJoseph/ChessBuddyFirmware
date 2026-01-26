@@ -103,6 +103,9 @@ private:
     // wifi animation images array
     static const lv_image_dsc_t * wifi_anim_arr[3];
 
+    // class references
+    WLAN* wlan;
+
 public:
     // GUI is a singleton
     static GUI& instance() {
@@ -157,7 +160,7 @@ public:
     GameInfo gameInfo;
     std::vector<NetworkInfo> networkInfo;
 
-    void initializeGUI();
+    void initializeGUI(WLAN* wifiRef);
     void set_active_game_state();
 
     lv_obj_t* create_text(lv_obj_t * parent, const char * icon, const char * txt,
