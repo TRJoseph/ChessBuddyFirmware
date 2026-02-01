@@ -1,7 +1,7 @@
 #include "gui_gateway.h"
 
-GUI_GATEWAY::GUI_GATEWAY(GUI& gui, WLAN& wlan) 
-    : wlan(&wlan), gui(&gui), taskHandle(nullptr) {
+GUI_GATEWAY::GUI_GATEWAY(WLAN& wlan) 
+    : wlan(&wlan), gui(GUI::instance()), taskHandle(nullptr) {
     // creates the queue size for this instance
     guiQueue = xQueueCreate(10, sizeof(GuiMessage));
 }
@@ -43,18 +43,18 @@ void GUI_GATEWAY::run_gateway_task() {
                 }
                 case GUI_ACTION_UPDATE_WIFI_ICON: {
                     WifiUpdateData* data = static_cast<WifiUpdateData*>(msg.data);
-                    gui->updateWifiWidget(data->wifiStatus);
+                    gui.updateWifiWidget(data->wifiStatus);
                     delete data;
                     break;
                 }
                 case GUI_ACTION_UPDATE_WIFI_LIST: {
                     WifiListUpdateData* data = static_cast<WifiListUpdateData*>(msg.data);
-                    gui->updateWifiNetworkList(data->networkCount, data->networks);
+                    gui.updateWifiNetworkList(data->networkCount, data->networks);
                     delete data;
                     break;
                 }
                 case GUI_ACTION_END_ENGINE_TURN: {
-                    gui->end_engine_turn_handler();
+                    gui.end_engine_turn_handler();
                     break;
                 }
                 default:

@@ -103,8 +103,11 @@ private:
     // wifi animation images array
     static const lv_image_dsc_t * wifi_anim_arr[3];
 
+    // TODO: change these to references once I implement callback functions
     // class references
     WLAN* wlan;
+    Main_Controller* main_controller;
+    
 
 public:
     // GUI is a singleton
@@ -120,7 +123,7 @@ public:
     };
 
     struct NetworkInfo {
-        struct WLAN::cNetwork network;
+        WLAN::cNetwork network;
         lv_obj_t* network_sub_page;
         lv_obj_t* container;
     };
@@ -160,7 +163,7 @@ public:
     GameInfo gameInfo;
     std::vector<NetworkInfo> networkInfo;
 
-    void initializeGUI(WLAN* wifiRef);
+    void initializeGUI(WLAN* wifiRef, Main_Controller* mainControllerRef);
     void set_active_game_state();
 
     lv_obj_t* create_text(lv_obj_t * parent, const char * icon, const char * txt,

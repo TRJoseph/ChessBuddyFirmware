@@ -11,139 +11,41 @@
 // static uint8_t whiteRookQueenSideFromSquare = 0;
 // static uint8_t whiteRookQueenSideToSquare = 3;
 
-// default config for stepper motors (these will be changed to be preference key value pairs so that the user can edit)
-float referenceStepperSpeed = 1500.0;
-float referenceStepperAccelScalar = 2;
+Main_Controller::Main_Controller(GUI_GATEWAY& gui_gateway) : gui_gateway(gui_gateway) {}
 
-// these shouldnt change and are not adjustable by the user
-const uint32_t referenceStepperCalibSpeed = 1000;
-const uint32_t referenceStepperCalibAccel = 1500;
+void Main_Controller::initializeStepperMotors() {
+    stepperEngine.init();
+    
+  xStepperMotor.initializeMotor(
+      xStepPin, xDirPin, xLimitPin,
+      referenceStepperSpeed / 3,
+      referenceStepperCalibAccel,
+      referenceStepperCalibSpeed / 10,
+      referenceStepperCalibAccel,
+      stepperEngine
+  );
 
+  yStepperMotor.initializeMotor(
+      yStepPin, yDirPin, yLimitPin,
+      referenceStepperSpeed,
+      referenceStepperCalibAccel,
+      referenceStepperCalibSpeed / 3,
+      referenceStepperCalibAccel,
+      stepperEngine
+  );
 
-
-/* THINGS TO NOTE:
-The X stepper motor is referring to the base joint rotation. The Y stepper motor is referring to the arm segment joint rotation.
-*/
-class StepperMotor {
-public:
-    // reference to the fast accel stepper engine controller
-    FastAccelStepperEngine *stepperEngine;
-
-    FastAccelStepper *motor;
-    int stepPin, dirPin, limitPin;
-    uint32_t normalMaxSpeed;
-    uint32_t normalAcceleration;
-    uint32_t calibrationMaxSpeed;
-    uint32_t calibrationAcceleration;
-
-    StepperMotor(int stepPin, int dirPin, int limitPin, uint32_t normalSpeed, uint32_t normalAccel, uint32_t calibSpeed, uint32_t calibAccel) : stepPin(stepPin), dirPin(dirPin), limitPin(limitPin) {
-        normalMaxSpeed = normalSpeed;
-        normalAcceleration = normalAccel;
-        calibrationMaxSpeed = calibSpeed;
-        calibrationAcceleration = calibAccel;
-    }
-
-    void initializeMotor() {
-        Serial.print("Connecting stepper to pin: ");
-        Serial.println(stepPin);
-        
-        motor = stepperEngine.stepperConnectToPin(stepPin);
-        if (motor == nullptr) {
-            Serial.println("ERROR: Failed to connect stepper!");
-            return;
-        }
-        
-        if (dirPin >= 0) {  // Only set if valid pin
-            motor->setDirectionPin(dirPin);
-        }
-        
-        setNormalMotorSettings();
-    }
-
-    void setNormalMotorSettings() {
-      motor->setSpeedInHz(normalMaxSpeed);
-      motor->setAcceleration(normalAcceleration);
-    }
-
-    void setCalibrationMotorSettings() {
-      motor->setSpeedInHz(calibrationMaxSpeed);
-      motor->setAcceleration(calibrationAcceleration);
-    }
-
-    void setCustomMotorSpeedAccel(uint32_t speed, uint32_t accel) {
-      motor->setSpeedInHz(speed);
-      motor->setAcceleration(accel);
-    }
-
-    void calibrate() {
-        setCalibrationMotorSettings();
-
-        motor->runBackward();
-  
-        while (digitalRead(limitPin) == LOW) {
-          delay(10);
-        }
-
-        motor->forceStop();
-        delay(100);
-
-        Serial.println("Axis Calibrated!");
-        setZeroPosition();
-
-        // reset speed and accel settings
-        setNormalMotorSettings();
-
-        delay(500);
-    }
-
-    // moves relative to current position
-    void move(long position) {
-      motor->move(position);
-    }
-
-    void moveTo(long position) {
-      motor->moveTo(position);
-    }
-
-    // set zero position after calibration
-    void setZeroPosition() {
-      motor->setCurrentPosition(0);
-    }
-
-    int32_t getCurrentPosition() {
-      return motor->getCurrentPosition();
-    }
-
-    void waitforCompletion() {
-      while (motor && motor->isRunning()) {
-        delay(10);
-      }
-    }
-
-    void moveToAndWaitForCompletion(long position) {
-      moveTo(position);
-      waitforCompletion();
-    }
-
-    void setLinear() {
-      motor->setLinearAcceleration(0);
-    }
-};
-
-// x step pin, y dir pin, limit pin, normal speed, normal acceleration, calibration speed, calibration acceleration
-StepperMotor xStepperMotor(xStepPin, xDirPin, xLimitPin, referenceStepperSpeed / 3, referenceStepperCalibAccel, referenceStepperCalibSpeed / 10, referenceStepperCalibAccel);
-StepperMotor yStepperMotor(yStepPin, yDirPin, yLimitPin, referenceStepperSpeed, referenceStepperCalibAccel, referenceStepperCalibSpeed / 3, referenceStepperCalibAccel);
-StepperMotor zStepperMotor(zStepPin, zDirPin, zLimitPin, referenceStepperSpeed * 3, 20000, referenceStepperCalibSpeed, referenceStepperCalibAccel); 
-
-void initializeStepperMotors() {
-  stepperEngine.init();
-  xStepperMotor.initializeMotor();
-  yStepperMotor.initializeMotor();
-  zStepperMotor.initializeMotor();
+  zStepperMotor.initializeMotor(
+      zStepPin, zDirPin, zLimitPin,
+      referenceStepperSpeed * 3,
+      20000,
+      referenceStepperCalibSpeed,
+      referenceStepperCalibAccel,
+      stepperEngine
+  );
 }
 
 // calibrate all X,Y,Z starting positions
-void runCalibrationRoutine() {
+void Main_Controller::runCalibrationRoutine() {
   Serial.println("Starting Calibration Routine...");
 
   // ensure arm clearance for y axis calibration routine
@@ -178,14 +80,14 @@ void runCalibrationRoutine() {
   calibrationStatus = true;
 }
 
-void gotoParkPosition() {
+void Main_Controller::gotoParkPosition() {
   // go to park position
   inverseKinematics(-100, 0);
   xStepperMotor.waitforCompletion();
   yStepperMotor.waitforCompletion();
 }
 
-int* getSquarePosition(char square[]) {
+const int* Main_Controller::getSquarePosition(char square[]) {
     // maps the square identifiers to their corresponding array indices
     int index = 0;
     char file = square[0]; // 'a' to 'h'
@@ -209,9 +111,9 @@ int* getSquarePosition(char square[]) {
 
 // a quiet move in chess is defined as a move that does not change the current material on the board (not a capture move)
 // if no special move was performed assume its quiet
-void performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType = PieceType::King, SpecialMove specialMove = SpecialMove::None) {
+void Main_Controller::performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType, SpecialMove specialMove) {
   
-  int pieceZOffset = getPieceZOffset(pieceType);
+  int pieceZOffset = PieceZAxisOffsets[pieceType];
 
   moveToSquare(fromSquare);
 
@@ -231,10 +133,10 @@ void performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType = 
   gotoParkPosition();
 }
 
-void performKingSideCastle() {
+void Main_Controller::performKingSideCastle() {
   
-  int kingZOffset = getPieceZOffset(PieceType::King);
-  int rookZOffset = getPieceZOffset(PieceType::Rook);
+  int kingZOffset = PieceZAxisOffsets[PieceType::King];
+  int rookZOffset = PieceZAxisOffsets[PieceType::Rook];
 
   moveToSquare("e8");
   
@@ -268,9 +170,9 @@ void performKingSideCastle() {
   gotoParkPosition();
 }
 
-void performQueenSideCastle() {
-  int kingZOffset = getPieceZOffset(PieceType::King);
-  int rookZOffset = getPieceZOffset(PieceType::Rook);
+void Main_Controller::performQueenSideCastle() {
+  int kingZOffset = PieceZAxisOffsets[PieceType::King];
+  int rookZOffset = PieceZAxisOffsets[PieceType::Rook];
 
   moveToSquare("e8");
   
@@ -305,10 +207,10 @@ void performQueenSideCastle() {
 }
 
 
-void performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType = PieceType::King, PieceType capturedPieceType = PieceType::King) {
+void Main_Controller::performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType, PieceType capturedPieceType) {
 
-  int pieceZOffset = getPieceZOffset(pieceType);
-  int capturedPieceZOffset = getPieceZOffset(capturedPieceType);
+  int pieceZOffset = PieceZAxisOffsets[pieceType];
+  int capturedPieceZOffset = PieceZAxisOffsets[capturedPieceType];
 
   // extra steps for capture, we need to visit the "to square" first
   moveToSquare(toSquare);
@@ -342,8 +244,8 @@ void performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType 
   gotoParkPosition();
 }
 
-void performEnPassantMove(char fromSquare[], char toSquare[]) {
-  int pieceZOffset = PieceZAxisOffsets[(int)PieceType::Pawn].value;
+void Main_Controller::performEnPassantMove(char fromSquare[], char toSquare[]) {
+  int pieceZOffset = PieceZAxisOffsets[PieceType::Pawn];
 
   moveToSquare(fromSquare);
 
@@ -374,8 +276,8 @@ void performEnPassantMove(char fromSquare[], char toSquare[]) {
   digitalWrite(electromagnetPin, LOW);
 }
 
-void moveToSquare(char square[]) {
-  int* position = getSquarePosition(square);
+void Main_Controller::moveToSquare(char square[]) {
+  const int* position = getSquarePosition(square);
   if (position != nullptr) {
       inverseKinematics(position[0], position[1]);
       delay(50);
@@ -384,16 +286,8 @@ void moveToSquare(char square[]) {
   yStepperMotor.waitforCompletion();
 }
 
-int getPieceZOffset(PieceType key) {
-    for (int i = 0; i < sizeof(PieceZAxisOffsets) / sizeof(PieceZAxisOffsets[0]); i++) {
-        if (PieceZAxisOffsets[i].key == key) {
-            return PieceZAxisOffsets[i].value;
-        }
-    }
-    return -1;  // return -1 if the key is not found 
-}
 
-PieceType stringToPieceType(const char* pieceStr) {
+Main_Controller::PieceType Main_Controller::stringToPieceType(const char* pieceStr) {
   if (strchr(pieceStr, '0') != nullptr) {
     return PieceType::Pawn;
   } else if (strchr(pieceStr, '1') != nullptr) {
@@ -412,7 +306,7 @@ PieceType stringToPieceType(const char* pieceStr) {
   }
 }
 
-void inverseKinematics(long x, long y) {
+void Main_Controller::inverseKinematics(long x, long y) {
   // y motor corresponds to q2
   // x motor (base motor) corresponds to q1
 
@@ -486,7 +380,7 @@ void inverseKinematics(long x, long y) {
   yStepperMotor.move(ySteps);
 }
 
-uint8_t splitString(const char* input, char delimiter, char tokens[][28], uint8_t maxTokens = 5) {
+uint8_t Main_Controller::splitString(const char* input, char delimiter, char tokens[][28], uint8_t maxTokens) {
   uint8_t tokenIndex = 0;
   uint8_t charIndex = 0;
 
@@ -509,7 +403,7 @@ uint8_t splitString(const char* input, char delimiter, char tokens[][28], uint8_
 /* this function edits the square state board to reflect the engine move */
 // TODO: THIS WILL NEED EDITS FOR DIFFERENT MOVE TYPES LIKE CASTLING, EN PASSANT, AND PROMOTIONS
 // should be totally functional for quiet moves and capture moves
-void editSquareStates(uint8_t fromSquare, uint8_t toSquare) {
+void Main_Controller::editSquareStates(uint8_t fromSquare, uint8_t toSquare) {
   if (fromSquare < 0 || fromSquare > 63 || toSquare < 0 || toSquare > 63) {
     Serial.println("Error: Square index out of bounds");
     return;
@@ -520,7 +414,7 @@ void editSquareStates(uint8_t fromSquare, uint8_t toSquare) {
   squareStates[toSquare] = temp;
 }
 
-void algebraicToSquares(const char move[], uint8_t& fromSquare, uint8_t& toSquare) {
+void Main_Controller::algebraicToSquares(const char move[], uint8_t& fromSquare, uint8_t& toSquare) {
   char fromFile = move[0];
   char fromRank = move[1];
   char toFile = move[2];
@@ -609,7 +503,7 @@ void algebraicToSquares(const char move[], uint8_t& fromSquare, uint8_t& toSquar
 // }
 
 // quick helper function to add a move to the movecount
-void addMove(const char* move) {
+void Main_Controller::addMove(const char* move) {
     if (moveCount < MAX_MOVES) {
         strncpy(moveHistory[moveCount], move, MOVE_LENGTH - 1);
         moveHistory[moveCount][MOVE_LENGTH - 1] = '\0';
@@ -617,7 +511,7 @@ void addMove(const char* move) {
     }
 }
 
-void clearMoveHistory() {
+void Main_Controller::clearMoveHistory() {
     for (int i = 0; i < moveCount; i++) {
         moveHistory[i][0] = '\0';  // Clear each move string
     }
@@ -625,7 +519,7 @@ void clearMoveHistory() {
 }
 
 
-int splitString(String input, char delimiter, String outputArray[]) {
+int Main_Controller::splitString(String input, char delimiter, String outputArray[]) {
   int tokenIndex = 0;
   int startIndex = 0;
   int delimiterIndex = input.indexOf(delimiter);
@@ -642,7 +536,7 @@ int splitString(String input, char delimiter, String outputArray[]) {
   return tokenIndex; 
 }
 
-void printMoveHistory() {
+void Main_Controller::printMoveHistory() {
   Serial.println("Move History:");
   for (int i = 0; i < moveCount; i++) {
     Serial.print(i + 1);
@@ -652,7 +546,7 @@ void printMoveHistory() {
 }
 
 
-void handleArmMove(const char* move) {
+void Main_Controller::handleArmMove(const char* move) {
   const char delimiter = '|';
   char tokens[5][28];
 
@@ -753,10 +647,10 @@ void handleArmMove(const char* move) {
   updateCurrentBoardState();
   userSideToMove = true;
 
-  request_end_engine_turn();
+  gui_gateway.request_end_engine_turn();
 }
 
-void instantiateBoardState() {
+void Main_Controller::instantiateBoardState() {
   // for all the white pieces
   for (int i = 0; i < 16; i++) {
     squareStates[i].status = SquareStatus::Occupied;
@@ -776,20 +670,22 @@ void instantiateBoardState() {
   }
 }
 
-void updateCurrentBoardState() {
+void Main_Controller::updateCurrentBoardState() {
   for (int i = 0; i < 64; i++) {
     currentBoardState[i] = squareStates[i];
   }
 }
 
-void resetPieceDetectionParameters() {
+void Main_Controller::resetPieceDetectionParameters() {
   potentialMovedFromSquare = -1;
   numPiecesPickedUp = 0;
   potentialMovedToSquare = -1;
   captureMove = false;
 }
 
-uint64_t readShiftRegisters() {
+// TODO: after seeing this I had the idea to maybe split up the main controller into arm controller and board controller
+// anything that interacts with the electronic chessboard maybe should be entirely separate
+uint64_t Main_Controller::readShiftRegisters() {
   // Trigger the latch to store the current state of the inputs
   digitalWrite(latchPin, LOW);
   delayMicroseconds(5); // Small delay for stability
@@ -809,19 +705,17 @@ uint64_t readShiftRegisters() {
   return result;
 }
 
-String squareNumToAlgebraic(int square) {
+String Main_Controller::squareNumToAlgebraic(int square) {
   char file = 'a' + (square - 1) % 8;
   char rank = '1' + (square - 1) / 8;
   return String(file) + String(rank);
 }
 
-String combineSquareStrings(int fromSquare, int toSquare) {
+String Main_Controller::combineSquareStrings(int fromSquare, int toSquare) {
   return squareNumToAlgebraic(fromSquare) + squareNumToAlgebraic(toSquare);
 }
 
-
-
-void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = false) {
+void Main_Controller::scanningUserMove(bool isUserSideToMove, bool isFinalizedMove) {
   // do not poll board if a game is not active
   if(!activeGame) {
     // run idle led animation
@@ -984,7 +878,7 @@ void scanningUserMove(bool isUserSideToMove = false, bool isFinalizedMove = fals
 }
 
 // starts a new chess game
-void boardStartNewGame() {
+void Main_Controller::boardStartNewGame() {
   //gotoParkPosition();
 
   clearMoveHistory();
@@ -997,7 +891,7 @@ void boardStartNewGame() {
   userSideToMove = true;
 }
 
-void setupBoard() {
+void Main_Controller::setupBoard() {
   // set electromagnet pin out
   pinMode(electromagnetPin, OUTPUT);
   digitalWrite(electromagnetPin, LOW);

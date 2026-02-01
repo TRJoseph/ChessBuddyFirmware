@@ -46,14 +46,15 @@ private:
         char text[64];
     };
 
+    GUI& gui;
+
     // class references
     WLAN* wlan;
-    GUI* gui;
 
     TaskHandle_t taskHandle;  
 
 public:
-    GUI_GATEWAY(GUI& gui, WLAN& wlan);
+    GUI_GATEWAY(WLAN& wlan);
 
     /* FUNCTION DECLARATIONS */
 

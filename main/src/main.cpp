@@ -19,9 +19,12 @@
 uint32_t draw_buf[DRAW_BUF_SIZE / 4];
 
 WLAN wlan;
+
 GUI& gui = GUI::instance();
 
-GUI_GATEWAY gui_gateway(gui, wlan);
+GUI_GATEWAY gui_gateway(wlan);
+
+Main_Controller main_controller(gui_gateway);
 
 
 #if LV_USE_LOG != 0
@@ -67,10 +70,10 @@ void setup()
     wlan.setup_preferences();
 
     /* Starts the ChessBuddy GUI */
-    gui.initializeGUI(&wlan);
+    gui.initializeGUI(&wlan, &main_controller);
 
     /* Initializes the board and arm setup configuration*/
-    setupBoard();
+    main_controller.setupBoard();
 
     /* Initializes LEDs*/
     led_setup();
@@ -87,5 +90,5 @@ void setup()
 
 void loop()
 {
-    scanningUserMove(userSideToMove, false);
+    main_controller.scanningUserMove(main_controller.userSideToMove, false);
 }
