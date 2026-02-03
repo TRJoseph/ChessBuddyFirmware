@@ -103,6 +103,23 @@ private:
     // wifi animation images array
     static const lv_image_dsc_t * wifi_anim_arr[3];
 
+    // TODO switch any gameInfo side reference to use this instead
+    enum Sides {
+        SIDE_WHITE,
+        SIDE_BLACK
+    };
+
+    const char* sideLabels[2] = {
+        "White",
+        "Black"
+    };
+
+    const lv_image_dsc_t* sideIcons[2] = {
+        &white_king_large,
+        &black_king_large
+    };
+
+
     // TODO: change these to references once I implement callback functions
     // class references
     WLAN* wlan;
@@ -140,6 +157,7 @@ public:
         char* side_to_play;
         TimeControl time_control;
     };
+    
 
     struct executeCalibrationData {
         lv_obj_t * status_icon;

@@ -969,29 +969,13 @@ void GUI::setup_side_select_screen() {
     lv_obj_set_style_border_opa(parent, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    const char* sideLabels[5] = {
-        "White",
-        "Black"
-    };
-
-    const lv_image_dsc_t * sideIcons[5] {
-        &white_king_large,
-        &black_king_large
-    };
-
-    static void* side_select_data[2];
-
-    //const char* side_select_data = (const char*) malloc(2*sizeof(const char*));
-
     for(int i = 0; i < 2; i++) {
         lv_obj_t * cont = lv_btn_create(parent);
         lv_obj_set_size(cont, 180, 180);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-        side_select_data[i] = (void *)sideLabels[i];
-
-        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, &side_select_data[i]);
+        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, (void*) sideLabels[i]);
         lv_obj_set_style_radius(cont, 8, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
