@@ -4,6 +4,19 @@ GUI::GUI(){}
 
 FT6336U GUI::ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN);
 
+const GUI::DifficultyInfo GUI::difficultyTable[] = {
+    { "Beginner",     &black_pawn   },
+    { "Intermediate", &black_knight },
+    { "Advanced",     &black_rook   },
+    { "Expert",       &black_queen  },
+    { "Grandmaster",  &black_king   }
+};
+
+const GUI::SideInfo GUI::sideTable[] = {
+    {"White", &white_king_large},
+    {"Black", &black_king_large}
+};
+
 const lv_image_dsc_t* GUI::wifi_anim_arr[3] = {
     &wifi_low_strength,
     &wifi_med_strength,
@@ -949,8 +962,6 @@ void GUI::side_select_btn_handler(lv_event_t * e)
         //switch_to_difficulty_screen();
         switch_to_screen(gui.difficulty_screen);
     }
-
-    free(selected_side);
 }
 
 void GUI::setup_side_select_screen() {
@@ -998,22 +1009,21 @@ void GUI::setup_side_select_screen() {
 
 void GUI::difficulty_btn_handler(lv_event_t * e)
 {
-    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
-    if(!gui_extras || !gui_extras->gui) return;
+    GUI& gui = instance();
 
     lv_obj_t * obj = lv_event_get_target_obj(e);
     lv_event_code_t code = lv_event_get_code(e);
 
-    char * selected_difficulty = (char *)gui_extras->extra;
+    char * selected_difficulty = (char *)(lv_event_get_user_data(e));
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
         Serial.write(selected_difficulty);
-        gui_extras->gui->gameInfo.difficulty = selected_difficulty;
+        gui.gameInfo.difficulty = selected_difficulty;
 
         // SWITCH TO TIME CONTROL SCREEN
         //switch_to_time_control_screen();
-        switch_to_screen(gui_extras->gui->time_control_screen);
+        switch_to_screen(gui.time_control_screen);
     }
 }
 
@@ -1033,23 +1043,6 @@ void GUI::setup_difficulty_screen() {
     lv_obj_set_style_border_opa(parent, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    const char* difficultyLevels[5] = {
-        "Beginner",
-        "Intermediate",
-        "Advanced",
-        "Expert",
-        "Grandmaster"
-    };
-
-    const lv_image_dsc_t * difficultyIcons[5] {
-        &black_pawn,
-        &black_knight,
-        &black_rook,
-        &black_queen,
-        &black_king
-    };
-
-    static GUI::GUI_EXTRA difficulty_select_data[5];
 
     // Loop to create 5 containers
     for(int i = 0; i < 5; i++) {
@@ -1058,9 +1051,6 @@ void GUI::setup_difficulty_screen() {
         lv_obj_set_size(cont, 300, 60);
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-        difficulty_select_data[i].gui = this;
-        difficulty_select_data[i].extra = (void *)difficultyLevels[i];
 
         lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, &difficulty_select_data[i]);
         lv_obj_set_style_radius(cont, 8, 0);
@@ -1115,22 +1105,22 @@ char* GUI::get_time_control_label(TimeControl time_control_value) {
 
 void GUI::time_control_btn_handler(lv_event_t * e)
 {
-    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
-    if(!gui_extras || !gui_extras->gui) return;
+    GUI& gui = instance();
+
+    TimeControl* time_control = (TimeControl *)lv_event_get_user_data(e);
+    if(!time_control) return;
 
     lv_obj_t * obj = lv_event_get_target_obj(e);
     lv_event_code_t code = lv_event_get_code(e);
 
-    TimeControl* time_control = (TimeControl *)gui_extras->extra;
-
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        gui_extras->gui->gameInfo.time_control = *time_control;
+        gui.gameInfo.time_control = *time_control;
 
         // SWITCH TO START GAME SCREEN
         //switch_to_time_control_screen();
-        gui_extras->gui->setup_start_game_screen();
-        switch_to_screen(gui_extras->gui->start_game_screen);
+        gui.setup_start_game_screen();
+        switch_to_screen(gui.start_game_screen);
 
        
         // Serial.print("Difficulty: ");
@@ -1160,20 +1150,6 @@ void GUI::setup_time_control_screen() {
     lv_obj_set_style_border_opa(parent, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    TimeControl timeControls[3] = {
-        FIVEMINBLITZ,
-        TENMINRAPID,
-        THIRTYMINRAPID
-    };
-
-    const lv_image_dsc_t * timeControlIcons[3] {
-        &lightning,
-        &rapid_clock,
-        &rapid_clock,
-    };
-
-    static GUI::GUI_EXTRA time_control_data[3];
-
     // Loop to create time control containers
     for(int i = 0; i < 3; i++) {
         // Create a horizontal container
@@ -1182,16 +1158,13 @@ void GUI::setup_time_control_screen() {
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-        time_control_data[i].gui = this;
-        time_control_data[i].extra = (void*)timeControls[i];
-
-        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, &time_control_data[i]);
+        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void*)timeControls[i]);
         lv_obj_set_style_radius(cont, 40, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
 
         // Icon (left)
-        // lv_obj_t * icon = lv_label_create(cont);
+        // lv_obj_t * icon = lv_label_create(cont)
         // lv_label_set_text(icon, difficultyIcons[i]);
         //lv_obj_set_style_text_font(icon, &lv_font_montserrat_30, 0);
         // lv_image_set_scale(title_image, 256); 

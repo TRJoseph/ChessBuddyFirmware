@@ -103,22 +103,67 @@ private:
     // wifi animation images array
     static const lv_image_dsc_t * wifi_anim_arr[3];
 
-    // TODO switch any gameInfo side reference to use this instead
-    enum Sides {
-        SIDE_WHITE,
-        SIDE_BLACK
+    enum Side {
+        SIDE_WHITE = 0,
+        SIDE_BLACK = 1
     };
 
-    const char* sideLabels[2] = {
-        "White",
-        "Black"
+    struct SideInfo {
+        const char* label;
+        const lv_image_dsc_t* icon;
     };
 
-    const lv_image_dsc_t* sideIcons[2] = {
-        &white_king_large,
-        &black_king_large
+    static const SideInfo sideTable[];
+
+    // In seconds
+    enum TimeControl {
+        FIVEMINBLITZ = 300,
+        TENMINRAPID = 600,
+        THIRTYMINRAPID = 1800
     };
 
+    TimeControl timeControls[3] = {
+        FIVEMINBLITZ,
+        TENMINRAPID,
+        THIRTYMINRAPID
+    };
+
+    const lv_image_dsc_t * timeControlIcons[3] {
+        &lightning,
+        &rapid_clock,
+        &rapid_clock,
+    };
+
+    enum DifficultyLevel {
+        Beginner = 0,
+        Intermediate,
+        Advanced,
+        Expert,
+        Grandmaster
+    };
+
+    struct DifficultyInfo {
+        const char* label;
+        const lv_image_dsc_t* icon;
+    };
+
+    static const DifficultyInfo difficultyTable[];
+
+    const char* difficultyLabels[5] = {
+        "Beginner",
+        "Intermediate",
+        "Advanced",
+        "Expert",
+        "Grandmaster"
+    };
+
+    const lv_image_dsc_t* difficultyIcons[5] = {
+        &black_pawn,
+        &black_knight,
+        &black_rook,
+        &black_queen,
+        &black_king
+    };
 
     // TODO: change these to references once I implement callback functions
     // class references
@@ -145,20 +190,12 @@ public:
         lv_obj_t* container;
     };
 
-    // In seconds
-    enum TimeControl {
-        FIVEMINBLITZ = 300,
-        TENMINRAPID = 600,
-        THIRTYMINRAPID = 1800
-    };
-
     struct GameInfo {
         char* difficulty;
         char* side_to_play;
         TimeControl time_control;
     };
     
-
     struct executeCalibrationData {
         lv_obj_t * status_icon;
         lv_obj_t * message_box;
@@ -170,14 +207,13 @@ public:
         lv_obj_t* computer_side_container;
     };
 
-    static SidesContainer sides_container;
-
     struct SliderInfo {
         lv_obj_t *slider_label;
         int32_t val;
         byte t;
     };
 
+    SidesContainer sides_container;
     GameInfo gameInfo;
     std::vector<NetworkInfo> networkInfo;
 
