@@ -5,16 +5,22 @@ GUI::GUI(){}
 FT6336U GUI::ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN);
 
 const GUI::DifficultyInfo GUI::difficultyTable[] = {
-    { "Beginner",     &black_pawn   },
-    { "Intermediate", &black_knight },
-    { "Advanced",     &black_rook   },
-    { "Expert",       &black_queen  },
-    { "Grandmaster",  &black_king   }
+    { DifficultyLevel::Beginner, "Beginner",     &black_pawn   },
+    { DifficultyLevel::Intermediate, "Intermediate", &black_knight },
+    { DifficultyLevel::Advanced, "Advanced",     &black_rook   },
+    { DifficultyLevel::Expert, "Expert",       &black_queen  },
+    { DifficultyLevel::Grandmaster, "Grandmaster",  &black_king   }
 };
 
 const GUI::SideInfo GUI::sideTable[] = {
-    {"White", &white_king_large},
-    {"Black", &black_king_large}
+    {Side::SIDE_WHITE, "White", &white_king_large},
+    {Side::SIDE_BLACK, "Black", &black_king_large}
+};
+
+const GUI::TimeControlInfo GUI::timeControlTable[] = {
+    {TimeControl::FIVEMINBLITZ, "5 Min (Blitz)", &lightning, 300},
+    {TimeControl::TENMINRAPID, "10 Min (Rapid)", &rapid_clock, 600},
+    {TimeControl::THIRTYMINRAPID, "30 Min (Rapid)", &rapid_clock, 1800}
 };
 
 const lv_image_dsc_t* GUI::wifi_anim_arr[3] = {
@@ -948,15 +954,16 @@ void GUI::side_select_btn_handler(lv_event_t * e)
 {
     GUI& gui = instance();
 
-    char* selected_side = static_cast<char*>(lv_event_get_user_data(e));
+    SideInfo* sideInfoEntry = static_cast<SideInfo*>(lv_event_get_user_data(e));
+    if(!sideInfoEntry) return;
     
     lv_obj_t * obj = lv_event_get_target_obj(e);
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        Serial.write(selected_side);
-        gui.gameInfo.side_to_play = selected_side;
+        Serial.write(sideInfoEntry->label);
+        gui.gameInfo.side_to_play = sideInfoEntry->side;
 
         // switch to difficulty screen
         //switch_to_difficulty_screen();
@@ -986,19 +993,19 @@ void GUI::setup_side_select_screen() {
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, (void*) sideLabels[i]);
+        lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, (void*) &sideTable[i]);
         lv_obj_set_style_radius(cont, 8, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
 
         lv_obj_t * icon = lv_image_create(cont);
-        lv_img_set_src(icon, sideIcons[i]);
+        lv_img_set_src(icon, sideTable[i].icon);
         lv_image_set_scale(icon, 256);  // REMINDER 256 is normal scale, 512 is double, 128 is half
 
         // Label (right)
         lv_obj_t * label = lv_label_create(cont);
 
-        lv_label_set_text(label, sideLabels[i]);
+        lv_label_set_text(label, sideTable[i].label);
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
         lv_obj_set_width(label, 180);
@@ -1014,12 +1021,13 @@ void GUI::difficulty_btn_handler(lv_event_t * e)
     lv_obj_t * obj = lv_event_get_target_obj(e);
     lv_event_code_t code = lv_event_get_code(e);
 
-    char * selected_difficulty = (char *)(lv_event_get_user_data(e));
+    DifficultyInfo* difficultyInfoEntry = static_cast<DifficultyInfo*>(lv_event_get_user_data(e));
+    if(!difficultyInfoEntry) return;
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        Serial.write(selected_difficulty);
-        gui.gameInfo.difficulty = selected_difficulty;
+        Serial.write(difficultyInfoEntry->label);
+        gui.gameInfo.difficulty_level = difficultyInfoEntry->difficulty_level;
 
         // SWITCH TO TIME CONTROL SCREEN
         //switch_to_time_control_screen();
@@ -1052,7 +1060,7 @@ void GUI::setup_difficulty_screen() {
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-        lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, &difficulty_select_data[i]);
+        lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, (void *) &difficultyTable[i]);
         lv_obj_set_style_radius(cont, 8, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
@@ -1065,13 +1073,13 @@ void GUI::setup_difficulty_screen() {
         //lv_obj_set_style_text_color(icon, lv_color_hex(0xA3BECC), 0);
 
         lv_obj_t * icon = lv_image_create(cont);
-        lv_img_set_src(icon, difficultyIcons[i]);
+        lv_img_set_src(icon, difficultyTable[i].icon);
         lv_image_set_scale(icon, 256);  // REMINDER 256 is normal scale, 512 is double, 128 is half
 
         // Label (right)
         lv_obj_t * label = lv_label_create(cont);
 
-        lv_label_set_text(label, difficultyLevels[i]);
+        lv_label_set_text(label, difficultyTable[i].label);
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
         lv_obj_set_width(label, 220);  // Optional width to control wrapping if needed
@@ -1107,15 +1115,15 @@ void GUI::time_control_btn_handler(lv_event_t * e)
 {
     GUI& gui = instance();
 
-    TimeControl* time_control = (TimeControl *)lv_event_get_user_data(e);
-    if(!time_control) return;
+    TimeControlInfo* timeControlEntry = static_cast<TimeControlInfo*>(lv_event_get_user_data(e));
+    if(!timeControlEntry) return;
 
     lv_obj_t * obj = lv_event_get_target_obj(e);
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
-        gui.gameInfo.time_control = *time_control;
+        gui.gameInfo.time_control = timeControlEntry->time_control;
 
         // SWITCH TO START GAME SCREEN
         //switch_to_time_control_screen();
@@ -1158,7 +1166,7 @@ void GUI::setup_time_control_screen() {
         lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void*)timeControls[i]);
+        lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void*) &timeControlTable[i]);
         lv_obj_set_style_radius(cont, 40, 0);
         lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
@@ -1171,13 +1179,13 @@ void GUI::setup_time_control_screen() {
         //lv_obj_set_style_text_color(icon, lv_color_hex(0xA3BECC), 0);
 
         lv_obj_t * icon = lv_image_create(cont);
-        lv_img_set_src(icon, timeControlIcons[i]);
+        lv_img_set_src(icon, timeControlTable[i].icon);
         lv_image_set_scale(icon, 256);  // REMINDER 256 is normal scale, 512 is double, 128 is half
 
         // Label (right)
         lv_obj_t * label = lv_label_create(cont);
 
-        lv_label_set_text(label, get_time_control_label(timeControls[i]));
+        lv_label_set_text(label, timeControlTable[i].label);
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
         lv_obj_set_width(label, 200);  // Optional width to control wrapping if needed
@@ -1187,13 +1195,12 @@ void GUI::setup_time_control_screen() {
 
 void GUI::execute_calibration_routine_handler(lv_event_t * e)
 {
-    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
-    if(!gui) return;
+    GUI& gui = instance();
 
     lv_obj_t* message_box = (lv_obj_t*) lv_event_get_user_data(e);
     
     // TODO: make this reference the main control object
-    gui->main_controller->runCalibrationRoutine();
+    gui.main_controller->runCalibrationRoutine();
 
     lv_obj_del(lv_obj_get_parent(message_box));
 }
@@ -1215,8 +1222,7 @@ void GUI::calibration_handler_popup()
 
 void GUI::start_game_btn_handler(lv_event_t * e)
 {
-    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
-    if(!gui) return;
+    GUI& gui = instance();
 
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -1224,15 +1230,15 @@ void GUI::start_game_btn_handler(lv_event_t * e)
         LV_LOG_USER("Clicked");
 
         // if arm is calibrated, proceed to game start, else pop up message
-        if(gui->main_controller->calibrationStatus) {
-            gui->setup_active_game_screen();
-            switch_to_screen(gui->active_game_screen);
+        if(gui.main_controller->calibrationStatus) {
+            gui.setup_active_game_screen();
+            switch_to_screen(gui.active_game_screen);
 
             // initialize the board for a game to start
             // TODO: make this a refernce to main control object
-            gui->main_controller->boardStartNewGame();
+            gui.main_controller->boardStartNewGame();
         } else {
-            gui->calibration_handler_popup();
+            gui.calibration_handler_popup();
         }
     }
 }
@@ -1255,7 +1261,7 @@ void GUI::setup_start_game_screen() {
     lv_obj_set_style_pad_all(start_game_btn, 10, 0);
     lv_obj_set_style_border_opa(start_game_btn, LV_OPA_TRANSP, 0);
     lv_obj_align(start_game_btn, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(start_game_btn, start_game_btn_handler, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(start_game_btn, start_game_btn_handler, LV_EVENT_CLICKED, nullptr);
 
     lv_obj_t * start_game_btn_label = lv_label_create(start_game_btn);
     lv_label_set_text(start_game_btn_label, "Start Game");
@@ -1272,7 +1278,8 @@ void GUI::setup_start_game_screen() {
 
     char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User): %s\nTime Control: %s", gameInfo.difficulty, gameInfo.side_to_play, get_time_control_label(gameInfo.time_control));
+    snprintf(buffer, sizeof(buffer), "Game Options: \nDifficulty: %s\nSide (User): %s\nTime Control: %s",
+    difficultyTable[gameInfo.difficulty_level].label, sideTable[gameInfo.side_to_play].label, timeControlTable[gameInfo.time_control].label);
 
     lv_obj_t * game_options_label = lv_label_create(start_game_screen);
     lv_label_set_text(game_options_label, buffer);
@@ -1284,15 +1291,14 @@ void GUI::setup_start_game_screen() {
 
 void GUI::clock_timer(lv_timer_t * timer)
 {
-    GUI* gui = &instance();
-    if(!gui) return;
+    GUI& gui = instance();
 
     lv_obj_t * selected_clock_label = (lv_obj_t *) lv_timer_get_user_data(timer);
 
     int minutes;
     int seconds;
 
-    if(gui->main_controller->userSideToMove) {
+    if(gui.main_controller->userSideToMove) {
         if (user_total_seconds > 0) {
             user_total_seconds--;
         }
@@ -1316,12 +1322,11 @@ void GUI::clock_timer(lv_timer_t * timer)
 
 void GUI::end_turn_btn_handler(lv_event_t * e)
 {
-    GUI::GUI_EXTRA* gui_extras = static_cast<GUI_EXTRA*>(lv_event_get_user_data(e));
-    if(!gui_extras || !gui_extras->gui) return;
+    GUI& gui = instance();
 
     lv_event_code_t code = lv_event_get_code(e);
 
-    SidesContainer* sides = (SidesContainer *)gui_extras->extra;
+    SidesContainer* sides = static_cast<SidesContainer*>(lv_event_get_user_data(e));
 
     if(code == LV_EVENT_CLICKED) {
         LV_LOG_USER("Clicked");
@@ -1335,23 +1340,23 @@ void GUI::end_turn_btn_handler(lv_event_t * e)
 
 
         // pause the user timer and start the computer's clock
-        lv_timer_pause(gui_extras->gui->user_timer);
-        lv_timer_resume(gui_extras->gui->computer_timer);
+        lv_timer_pause(gui.user_timer);
+        lv_timer_resume(gui.computer_timer);
         
 
         // swap to computer move
         //userSideToMove = false;
 
         // scan last time to get finalized move
-        scanningUserMove(true, true);
+        gui.main_controller->scanningUserMove(true, true);
 
-        printMoveHistory();
+        gui.main_controller->printMoveHistory();
 
-        resetPieceDetectionParameters();
+        gui.main_controller->resetPieceDetectionParameters();
 
         //non-blocking task for the http request to get a move
         xTaskCreatePinnedToCore(
-            getBestMoveTask,     // Task function
+            gui.server_interface->getBestMoveTask,     // Task function
             "GetBestMoveTask",   // Name
             8192,               // Stack size (in words, 4 bytes each) — adjust as needed
             NULL,                // Parameters
@@ -1378,13 +1383,12 @@ void GUI::end_engine_turn_handler() {
 }
 
 void GUI::end_game_button_handler(lv_event_t * e) {
-    GUI* gui = static_cast<GUI*>(lv_event_get_user_data(e));
-    if(!gui) return;
+    GUI& gui = instance();
  
     // TODO: clear the stack if this will switch you back to start screen, else dont
     // TODO: activegame is a main control object variable
-    activeGame = false;
-    switch_to_screen(gui->start_screen);
+    gui.main_controller->activeGame = false;
+    switch_to_screen(gui.start_screen);
 }
 
 ///
@@ -1406,7 +1410,6 @@ void GUI::set_active_game_state() {
     }
 
 }
-
 
 
 // THIS GUI FUNCTION IS EXTRA IMPORTANT AS IT INTERACTS DIRECTLY WITH THE CHESS BOARD ELECTRONICS CODE
@@ -1520,9 +1523,10 @@ void GUI::switch_to_start() {
 }
 
 
-void GUI::initializeGUI(WLAN* wifiRef, Main_Controller* mainControllerRef) {
+void GUI::initializeGUI(WLAN* wifiRef, Main_Controller* mainControllerRef, ServerInterface* serverIRef) {
     wlan = wifiRef;
     main_controller = mainControllerRef;
+    server_interface = serverIRef;
 
     setup_top_layer();
     setup_start_screen();

@@ -19,9 +19,6 @@ private:
     static constexpr int MAX_MOVES = 200;
     static constexpr int MOVE_LENGTH = 6;
 
-    // true if a game has started
-    bool activeGame = false;
-
     char moveHistory[MAX_MOVES][MOVE_LENGTH];
     int moveCount = 0;
 
@@ -47,7 +44,7 @@ private:
     };
 
     enum class PieceType {
-        Pawn,
+        Pawn = 0,
         Bishop,
         Knight,
         Rook,
@@ -104,15 +101,15 @@ private:
     {18, 375}, {59, 375}, {97, 375}, {135, 375},
     };
 
-    // hashmap of key value pairs for each piece offset
+    // map of key value pairs for each piece offset
     // this array is necessary because each physical piece has a different height on the chess board, the robot needs to compensate for each of those appropriately
-    std::unordered_map<PieceType, int> PieceZAxisOffsets = {
-        {PieceType::Pawn, -4760},
-        {PieceType::Knight, -4000},
-        {PieceType::Bishop, -3520},
-        {PieceType::Rook, -4390},
-        {PieceType::Queen, -2944},
-        {PieceType::King, -1670} // king is good
+    static constexpr int PieceZAxisOffsets[] = {
+        -4760, // Pawn
+        -4000, // Knight
+        -3520, // Bishop
+        -4390, // Rook
+        -2944, // Queen
+        -1670  // King
     };
 
     FastAccelStepperEngine stepperEngine = FastAccelStepperEngine();
@@ -138,6 +135,9 @@ public:
 
     // true if it is the user's side to move, else robot's turn
     bool userSideToMove = false;
+
+    // true if a game has started
+    bool activeGame = false;
 
     // TODO: these will likely need to move when I implement preferences
     // default config for stepper motors (these will be changed to be preference key value pairs so that the user can edit)

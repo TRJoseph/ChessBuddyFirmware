@@ -109,29 +109,22 @@ private:
     };
 
     struct SideInfo {
+        Side side;
         const char* label;
         const lv_image_dsc_t* icon;
     };
 
-    static const SideInfo sideTable[];
-
-    // In seconds
     enum TimeControl {
-        FIVEMINBLITZ = 300,
-        TENMINRAPID = 600,
-        THIRTYMINRAPID = 1800
-    };
-
-    TimeControl timeControls[3] = {
-        FIVEMINBLITZ,
+        FIVEMINBLITZ = 0,
         TENMINRAPID,
         THIRTYMINRAPID
     };
 
-    const lv_image_dsc_t * timeControlIcons[3] {
-        &lightning,
-        &rapid_clock,
-        &rapid_clock,
+    struct TimeControlInfo {
+        TimeControl time_control;
+        const char* label;
+        const lv_image_dsc_t* icon;
+        int seconds;
     };
 
     enum DifficultyLevel {
@@ -143,33 +136,20 @@ private:
     };
 
     struct DifficultyInfo {
+        DifficultyLevel difficulty_level;
         const char* label;
         const lv_image_dsc_t* icon;
     };
 
+    static const TimeControlInfo timeControlTable[];
     static const DifficultyInfo difficultyTable[];
-
-    const char* difficultyLabels[5] = {
-        "Beginner",
-        "Intermediate",
-        "Advanced",
-        "Expert",
-        "Grandmaster"
-    };
-
-    const lv_image_dsc_t* difficultyIcons[5] = {
-        &black_pawn,
-        &black_knight,
-        &black_rook,
-        &black_queen,
-        &black_king
-    };
+    static const SideInfo sideTable[];
 
     // TODO: change these to references once I implement callback functions
     // class references
     WLAN* wlan;
     Main_Controller* main_controller;
-    
+    ServerInterface* server_interface;
 
 public:
     // GUI is a singleton
@@ -191,8 +171,8 @@ public:
     };
 
     struct GameInfo {
-        char* difficulty;
-        char* side_to_play;
+        DifficultyLevel difficulty_level;
+        Side side_to_play;
         TimeControl time_control;
     };
     
@@ -217,7 +197,7 @@ public:
     GameInfo gameInfo;
     std::vector<NetworkInfo> networkInfo;
 
-    void initializeGUI(WLAN* wifiRef, Main_Controller* mainControllerRef);
+    void initializeGUI(WLAN* wifiRef, Main_Controller* mainControllerRef, ServerInterface* serverIRef);
     void set_active_game_state();
 
     lv_obj_t* create_text(lv_obj_t * parent, const char * icon, const char * txt,

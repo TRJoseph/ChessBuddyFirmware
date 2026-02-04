@@ -113,7 +113,7 @@ const int* Main_Controller::getSquarePosition(char square[]) {
 // if no special move was performed assume its quiet
 void Main_Controller::performQuietMove(char fromSquare[], char toSquare[], PieceType pieceType, SpecialMove specialMove) {
   
-  int pieceZOffset = PieceZAxisOffsets[pieceType];
+  int pieceZOffset = PieceZAxisOffsets[static_cast<int>(pieceType)];
 
   moveToSquare(fromSquare);
 
@@ -135,8 +135,8 @@ void Main_Controller::performQuietMove(char fromSquare[], char toSquare[], Piece
 
 void Main_Controller::performKingSideCastle() {
   
-  int kingZOffset = PieceZAxisOffsets[PieceType::King];
-  int rookZOffset = PieceZAxisOffsets[PieceType::Rook];
+  int kingZOffset = PieceZAxisOffsets[static_cast<int>(PieceType::King)];
+  int rookZOffset = PieceZAxisOffsets[static_cast<int>(PieceType::Rook)];
 
   moveToSquare("e8");
   
@@ -171,8 +171,8 @@ void Main_Controller::performKingSideCastle() {
 }
 
 void Main_Controller::performQueenSideCastle() {
-  int kingZOffset = PieceZAxisOffsets[PieceType::King];
-  int rookZOffset = PieceZAxisOffsets[PieceType::Rook];
+  int kingZOffset = PieceZAxisOffsets[static_cast<int>(PieceType::King)];
+  int rookZOffset = PieceZAxisOffsets[static_cast<int>(PieceType::Rook)];
 
   moveToSquare("e8");
   
@@ -209,8 +209,8 @@ void Main_Controller::performQueenSideCastle() {
 
 void Main_Controller::performCaptureMove(char fromSquare[], char toSquare[], PieceType pieceType, PieceType capturedPieceType) {
 
-  int pieceZOffset = PieceZAxisOffsets[pieceType];
-  int capturedPieceZOffset = PieceZAxisOffsets[capturedPieceType];
+  int pieceZOffset = PieceZAxisOffsets[static_cast<int>(pieceType)];
+  int capturedPieceZOffset = PieceZAxisOffsets[static_cast<int>(capturedPieceType)];
 
   // extra steps for capture, we need to visit the "to square" first
   moveToSquare(toSquare);
@@ -245,7 +245,7 @@ void Main_Controller::performCaptureMove(char fromSquare[], char toSquare[], Pie
 }
 
 void Main_Controller::performEnPassantMove(char fromSquare[], char toSquare[]) {
-  int pieceZOffset = PieceZAxisOffsets[PieceType::Pawn];
+  int pieceZOffset = PieceZAxisOffsets[static_cast<int>(PieceType::Pawn)];
 
   moveToSquare(fromSquare);
 
