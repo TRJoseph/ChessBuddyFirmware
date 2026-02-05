@@ -3,7 +3,7 @@
 class StepperMotor {
 private:
     // reference to the fast accel stepper engine controller
-    FastAccelStepperEngine& stepperEngine;
+    FastAccelStepperEngine* stepperEngine;
 
     FastAccelStepper* motor;
     int stepPin, dirPin, limitPin;
@@ -12,7 +12,6 @@ private:
     uint32_t calibrationMaxSpeed;
     uint32_t calibrationAcceleration;
 public:
-    StepperMotor();
 
     void initializeMotor(int stepPin, int dirPin, int limitPin, uint32_t normalSpeed, uint32_t normalAccel, uint32_t calibSpeed, uint32_t calibAccel, FastAccelStepperEngine& engineRef);
     void setNormalMotorSettings();

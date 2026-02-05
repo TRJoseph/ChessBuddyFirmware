@@ -29,6 +29,15 @@ const lv_image_dsc_t* GUI::wifi_anim_arr[3] = {
     &wifi_full_strength
 };
 
+lv_style_t GUI::generic_btn_style;
+lv_style_t GUI::nobg_btn_style;
+lv_style_t GUI::alert_btn_style;
+lv_style_t GUI::screen_style;
+lv_style_t GUI::active_timer;
+lv_style_t GUI::inactive_timer;
+lv_style_t GUI::calibration_container;
+lv_style_t GUI::temp_slider;
+
 // Sets up global styles
 void GUI::style_init() {
     lv_style_init(&generic_btn_style);
@@ -1299,17 +1308,17 @@ void GUI::clock_timer(lv_timer_t * timer)
     int seconds;
 
     if(gui.main_controller->userSideToMove) {
-        if (user_total_seconds > 0) {
-            user_total_seconds--;
+        if (gui.user_total_seconds > 0) {
+            gui.user_total_seconds--;
         }
-        minutes = user_total_seconds / 60;
-        seconds = user_total_seconds % 60;
+        minutes = gui.user_total_seconds / 60;
+        seconds = gui.user_total_seconds % 60;
     } else {
-        if (computer_total_seconds > 0) {
-            computer_total_seconds--;
+        if (gui.computer_total_seconds > 0) {
+            gui.computer_total_seconds--;
         }
-        minutes = computer_total_seconds / 60;
-        seconds = computer_total_seconds % 60;
+        minutes = gui.computer_total_seconds / 60;
+        seconds = gui.computer_total_seconds % 60;
     }
 
     //Serial.write("Decrementing...");
@@ -1503,15 +1512,17 @@ void GUI::setup_active_game_screen() {
 }
 
 void GUI::switch_to_screen(lv_obj_t* new_screen) {
+    GUI& gui = instance();
     lv_obj_t* current = lv_screen_active();
-    screen_stack.push(current); 
+    gui.screen_stack.push(current); 
     lv_screen_load(new_screen); 
 }
 
 void GUI::go_back_screen() {
-    if (!screen_stack.empty()) {
-        lv_obj_t* prev_screen = screen_stack.top();
-        screen_stack.pop();
+    GUI& gui = instance();
+    if (!gui.screen_stack.empty()) {
+        lv_obj_t* prev_screen = gui.screen_stack.top();
+        gui.screen_stack.pop();
         lv_scr_load(prev_screen);
     } else {
         Serial.println("No previous screen in stack.");

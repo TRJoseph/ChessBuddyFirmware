@@ -113,7 +113,7 @@ void WLAN::debugCurrentWifiStatus() {
 }
 
 
-void check_wifi_status_timer_cb(lv_timer_t * timer) {
+void WLAN::check_wifi_status_timer_cb(lv_timer_t * timer) {
     WLAN* wlan = static_cast<WLAN*>(lv_timer_get_user_data(timer));
     if (!wlan) return;
 

@@ -52,7 +52,7 @@ private:
     lv_obj_t *start_game_screen;
     lv_obj_t *active_game_screen;
     
-    static std::stack<lv_obj_t*> screen_stack;
+    std::stack<lv_obj_t*> screen_stack;
 
     lv_obj_t *wifi_icon;
 
@@ -86,15 +86,15 @@ private:
 
 
     /* Variables for Chess Clock Page (active game page) */
-    static int user_total_seconds;
-    static int user_minutes;
-    static int user_seconds;
+    int user_total_seconds;
+    int user_minutes;
+    int user_seconds;
 
     lv_timer_t* user_timer;
 
-    static int computer_total_seconds;
-    static int computer_minutes;
-    static int computer_seconds;
+    int computer_total_seconds;
+    int computer_minutes;
+    int computer_seconds;
 
     lv_timer_t* computer_timer;
 

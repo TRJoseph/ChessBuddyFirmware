@@ -13,12 +13,12 @@ void StepperMotor::initializeMotor(int stepPin, int dirPin, int limitPin,
         this->normalAcceleration = normalAccel;
         this->calibrationMaxSpeed = calibSpeed;
         this->calibrationAcceleration = calibAccel;
-        this->stepperEngine = engineRef;
+        this->stepperEngine = &engineRef;
 
         Serial.print("Connecting stepper to pin: ");
         Serial.println(stepPin);
         
-        motor = stepperEngine.stepperConnectToPin(stepPin);
+        motor = stepperEngine->stepperConnectToPin(stepPin);
         if (motor == nullptr) {
             Serial.println("ERROR: Failed to connect stepper!");
             return;
