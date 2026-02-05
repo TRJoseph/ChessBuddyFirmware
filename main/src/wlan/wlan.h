@@ -4,12 +4,13 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <lvgl.h>
-#include "gui_gateway.h"
 #include <Preferences.h>
 #include "FT6336U.h"
 #include "Main_Definitions.h"
 #include "User_Setup.h"
 #include <WiFi.h>
+
+class GUI_GATEWAY;
 
 class WLAN {
 private:

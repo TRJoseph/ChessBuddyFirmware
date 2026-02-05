@@ -1,12 +1,12 @@
-#include "led_controller.h"
+#include "ledcontroller.h"
 
-Adafruit_NeoPixel led_strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-
-const uint32_t activeColor = led_strip.Color(255, 255, 255); // White
-const uint32_t inactiveColor = led_strip.Color(0, 0, 0);     // Off
-
+LED_Controller::LED_Controller() : led_strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800)
+    {
+        activeColor   = led_strip.Color(255, 255, 255); // White
+        inactiveColor = led_strip.Color(0, 0, 0); // Off
+    }
 // this will run constantly when a user is not in a game
-void idleAnimation() {
+void LED_Controller::idleAnimation() {
   static uint16_t frame = 0;  // keeps track of animation step
 
   // Cycle brightness like a sine wave
@@ -31,7 +31,7 @@ void idleAnimation() {
 }
 
 
-void updateLEDs(uint64_t boardState) {
+void LED_Controller::updateLEDs(uint64_t boardState) {
   static uint64_t lastState = 0;
   if (boardState == lastState) return; // No change
 
@@ -48,7 +48,7 @@ void updateLEDs(uint64_t boardState) {
   led_strip.show();  // Apply changes
 }
 
-void clearAllLEDs() {
+void LED_Controller::clearAllLEDs() {
   for (int i = 0; i < LED_COUNT; i++) {
     led_strip.setPixelColor(i, inactiveColor);
   }
@@ -56,7 +56,7 @@ void clearAllLEDs() {
 }
 
 
-void led_setup() {
+void LED_Controller::led_setup() {
     led_strip.begin();
     led_strip.setBrightness(100);
     led_strip.show(); // Start with all LEDs off

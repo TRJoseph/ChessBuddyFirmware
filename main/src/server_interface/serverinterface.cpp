@@ -1,19 +1,13 @@
-#include "WiFi.h"
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-#include "maincontrol.h"
-#include <WiFiClientSecure.h>
-#include <esp_task_wdt.h>
+#include "serverinterface.h"
+#include "main_control/maincontrol.h"
 
+ServerInterface::ServerInterface(Main_Controller& mainControllerRef) : main_controller(mainControllerRef) {}
 
-// Render endpoint
-const char* serverURL = "https://chess-engine-service.onrender.com/get_move";
-
-String buildMovesString() {
+String ServerInterface::buildMovesString() {
   String moves = "";
-  for (int i = 0; i < moveCount; i++) {
-    moves += moveHistory[i];
-    if (i < moveCount - 1) {
+  for (int i = 0; i < main_controller.moveCount; i++) {
+    moves += main_controller.moveHistory[i];
+    if (i < main_controller.moveCount - 1) {
       moves += " ";
     }
   }
@@ -21,7 +15,7 @@ String buildMovesString() {
 }
 
 
-void getBestMoveFromServer() {
+void ServerInterface::getBestMoveFromServer() {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
         WiFiClientSecure client;
@@ -58,7 +52,7 @@ void getBestMoveFromServer() {
                 Serial.print("Engine move: ");
                 Serial.println(move);
                 http.end();
-                handleArmMove(move);
+                main_controller.handleArmMove(move);
             } else {
                 Serial.println("Failed to parse JSON");
                 http.end();
@@ -72,8 +66,10 @@ void getBestMoveFromServer() {
     }
 }
 
-void getBestMoveTask(void *parameter) {
-  //esp_task_wdt_init(60, true);
-  getBestMoveFromServer();
-  vTaskDelete(NULL);
+void ServerInterface::getBestMoveTask(void *pvParameter) {
+    ServerInterface* server_interface = static_cast<ServerInterface*>(pvParameter);
+    if(!server_interface) return;
+    //esp_task_wdt_init(60, true);
+    server_interface->getBestMoveFromServer();
+    vTaskDelete(NULL);
 }

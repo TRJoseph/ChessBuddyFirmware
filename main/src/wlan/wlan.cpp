@@ -1,4 +1,5 @@
 #include "wlan.h"
+#include "gui/gui_gateway.h"
 
 WLAN::WLAN(){}
 

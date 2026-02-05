@@ -2,16 +2,14 @@
 #define GUI_H
 
 #include <lvgl.h>
-#include "wlan.h"
-#include "maincontrol.h"
+#include "wlan/wlan.h"
+#include "main_control/maincontrol.h"
 #include "FT6336U.h"
 #include <Main_Definitions.h>
-#include "User_Setup.h"
-#include "wlan.h"
+#include <User_Setup.h>
 #include <stack>
-#include "serverInterface.h"
-#include "maincontrol.h"
-#include "gui_gateway.h"
+#include "server_interface/serverInterface.h"
+#include "gui/gui_gateway.h"
 
 // Misc Image Includes
 #include "main_logo.h"

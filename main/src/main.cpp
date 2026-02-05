@@ -2,11 +2,11 @@
 #include "FT6336U.h"         // Touch controller
 #include "Main_Definitions.h"
 #include <lvgl.h>
-#include "gui.h"
-#include "wlan.h"
-#include "gui_gateway.h"
-#include "serverInterface.h"
-#include "led_controller.h"
+#include "gui/gui.h"
+#include "wlan/wlan.h"
+#include "gui/gui_gateway.h"
+#include "server_interface/serverInterface.h"
+#include "led_control/ledcontroller.h"
 
 
 /* THE FT6336U SCREEN RES AND ROTATION */
@@ -25,6 +25,8 @@ GUI& gui = GUI::instance();
 GUI_GATEWAY gui_gateway(wlan);
 
 Main_Controller main_controller(gui_gateway);
+
+ServerInterface server_interface(main_controller);
 
 
 #if LV_USE_LOG != 0
@@ -70,13 +72,10 @@ void setup()
     wlan.setup_preferences();
 
     /* Starts the ChessBuddy GUI */
-    gui.initializeGUI(&wlan, &main_controller);
+    gui.initializeGUI(&wlan, &main_controller, &server_interface);
 
     /* Initializes the board and arm setup configuration*/
     main_controller.setupBoard();
-
-    /* Initializes LEDs*/
-    led_setup();
 
     /* Changes to the start screen */
     gui.switch_to_start();

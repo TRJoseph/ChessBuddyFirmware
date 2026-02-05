@@ -1359,7 +1359,7 @@ void GUI::end_turn_btn_handler(lv_event_t * e)
             gui.server_interface->getBestMoveTask,     // Task function
             "GetBestMoveTask",   // Name
             8192,               // Stack size (in words, 4 bytes each) — adjust as needed
-            NULL,                // Parameters
+            gui.server_interface, // server interface pointer
             3,                   // Priority
             NULL,                // Task handle
             0                    // Core ID (0 = good for background/IO tasks)
@@ -1377,7 +1377,7 @@ void GUI::end_engine_turn_handler() {
     lv_obj_remove_style(sides_container.user_side_container, &inactive_timer, LV_PART_MAIN);
 
 
-    // pause the user timer and start the computer's clock
+    // pause the computer timer and start the user's clock
     lv_timer_pause(computer_timer);
     lv_timer_resume(user_timer);
 }

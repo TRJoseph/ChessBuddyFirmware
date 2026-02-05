@@ -1,4 +1,5 @@
 #include "gui_gateway.h"
+#include "gui.h"
 
 GUI_GATEWAY::GUI_GATEWAY(WLAN& wlan) 
     : wlan(&wlan), gui(GUI::instance()), taskHandle(nullptr) {

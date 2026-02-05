@@ -14,7 +14,7 @@
 Main_Controller::Main_Controller(GUI_GATEWAY& gui_gateway) : gui_gateway(gui_gateway) {}
 
 void Main_Controller::initializeStepperMotors() {
-    stepperEngine.init();
+  stepperEngine.init();
     
   xStepperMotor.initializeMotor(
       xStepPin, xDirPin, xLimitPin,
@@ -719,7 +719,7 @@ void Main_Controller::scanningUserMove(bool isUserSideToMove, bool isFinalizedMo
   // do not poll board if a game is not active
   if(!activeGame) {
     // run idle led animation
-    idleAnimation();
+    led_controller.idleAnimation();
     return;
   }
   // do not poll board if it is not the user's turn
@@ -756,7 +756,7 @@ void Main_Controller::scanningUserMove(bool isUserSideToMove, bool isFinalizedMo
   Serial.println();
 
   // updates leds on board to reflect current game status
-  updateLEDs(binaryBoardState);
+  led_controller.updateLEDs(binaryBoardState);
 
   // Detect move
   int friendlyPieceCount = 0;
@@ -924,5 +924,8 @@ void Main_Controller::setupBoard() {
   digitalWrite(latchPin, HIGH);
 
   initializeStepperMotors();
+
+  /* Initializes LEDs*/
+  led_controller.led_setup();
 }
 

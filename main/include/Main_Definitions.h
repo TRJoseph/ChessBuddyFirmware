@@ -3,8 +3,6 @@
 // Pin Definitions for Electronic Chess Board 
 // ESP32-S3-Mini-1 GPIO mapping
 
-constexpr int ledPin = 17;
-
 // Shift Register Pins
 constexpr int latchPin = 1;
 constexpr int clockEnablePin = 3;

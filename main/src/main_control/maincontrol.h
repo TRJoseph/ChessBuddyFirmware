@@ -2,15 +2,14 @@
 #define MAINCONTROL
 
 #include <Arduino.h>
-#include <unordered_map>
 #include <FastAccelStepper.h>
 #include <string.h>
 #include "Main_Definitions.h"
-#include "serverInterface.h"
-#include "gui.h"
-#include "gui_gateway.h"
-#include "led_controller.h"
-#include "stepper_motor.h"
+#include "server_interface/serverinterface.h"
+#include "gui/gui.h"
+#include "gui/gui_gateway.h"
+#include "led_control/ledcontroller.h"
+#include "stepper_motor/stepper_motor.h"
 
 
 class Main_Controller {
@@ -18,9 +17,6 @@ private:
     static constexpr const char* startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     static constexpr int MAX_MOVES = 200;
     static constexpr int MOVE_LENGTH = 6;
-
-    char moveHistory[MAX_MOVES][MOVE_LENGTH];
-    int moveCount = 0;
 
     // for board piece detection
     int potentialMovedFromSquare;
@@ -124,12 +120,18 @@ private:
 
     GUI_GATEWAY& gui_gateway;
 
+    LED_Controller led_controller;
+
     void initializeStepperMotors();
     void addMove(const char* move);
-    void printMoveHistory();
     void clearMoveHistory();
 
 public:
+    Main_Controller(GUI_GATEWAY& gui_gateway);
+
+    char moveHistory[MAX_MOVES][MOVE_LENGTH];
+    int moveCount = 0;
+    
     // holding current status of calibration
     bool calibrationStatus = false;
 
@@ -148,8 +150,6 @@ public:
     const uint8_t maxStepperAccel = 4;
     const uint8_t minStepperAccel = 1;
 
-
-    Main_Controller(GUI_GATEWAY& gui_gateway);
 
     /* FUNCTION DEFINITIONS */
     void runCalibrationRoutine();
