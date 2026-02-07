@@ -49,13 +49,10 @@ private:
 
     GUI& gui;
 
-    // class references
-    WLAN* wlan;
-
     TaskHandle_t taskHandle;  
 
 public:
-    GUI_GATEWAY(WLAN& wlan);
+    GUI_GATEWAY();
 
     /* FUNCTION DECLARATIONS */
 

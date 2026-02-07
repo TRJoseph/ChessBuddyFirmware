@@ -18,14 +18,10 @@
 #define DRAW_BUF_SIZE (TFT_HOR_RES * TFT_VER_RES / 10 * (LV_COLOR_DEPTH / 8))
 uint32_t draw_buf[DRAW_BUF_SIZE / 4];
 
-WLAN wlan;
-
 GUI& gui = GUI::instance();
-
-GUI_GATEWAY gui_gateway(wlan);
-
+GUI_GATEWAY gui_gateway;
 Main_Controller main_controller(gui_gateway);
-
+WLAN wlan(gui_gateway);
 ServerInterface server_interface(main_controller);
 
 
@@ -67,12 +63,12 @@ void setup()
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER); /*Touchpad should have POINTER type*/
     lv_indev_set_read_cb(indev, gui.my_touch_read);
 
-    // setup wifi preferences and credentials
-    wlan.setup_wlan();
-    wlan.setup_preferences();
 
     /* Starts the ChessBuddy GUI */
     gui.initializeGUI(&wlan, &main_controller, &server_interface);
+
+    // starts the gateway thread for GUI
+    gui_gateway.start_gui_gateway_task();
 
     /* Initializes the board and arm setup configuration*/
     main_controller.setupBoard();
@@ -80,8 +76,11 @@ void setup()
     /* Changes to the start screen */
     gui.switch_to_start();
 
-    // starts the gateway thread for GUI
-    gui_gateway.start_gui_gateway_task();
+    // setup wifi preferences and credentials
+    // attempts to connect if saved network is found
+    wlan.setup_wlan();
+    wlan.setup_preferences();
+
 
     /* */
     Serial.println( "Setup done" );

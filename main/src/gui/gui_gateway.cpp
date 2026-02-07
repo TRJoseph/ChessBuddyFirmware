@@ -1,8 +1,8 @@
 #include "gui_gateway.h"
 #include "gui.h"
 
-GUI_GATEWAY::GUI_GATEWAY(WLAN& wlan) 
-    : wlan(&wlan), gui(GUI::instance()), taskHandle(nullptr) {
+GUI_GATEWAY::GUI_GATEWAY() 
+    : gui(GUI::instance()), taskHandle(nullptr) {
     // creates the queue size for this instance
     guiQueue = xQueueCreate(10, sizeof(GuiMessage));
 }
