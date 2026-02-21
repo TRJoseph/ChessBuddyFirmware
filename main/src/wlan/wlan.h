@@ -24,12 +24,18 @@ private:
   int attempt = 1;
 
   int failedScans = 0;
+  const int max_scans = 10;
+
+  lv_timer_t* wifi_status_timer;
+  lv_timer_t* wifi_scan_timer;
+  
+  GUI_GATEWAY& gui_gateway;
 
   void debugCurrentWifiStatus();
+  const char* getNetworkEncryptionType(wifi_auth_mode_t type);
 
-  GUI_GATEWAY* gui_gateway;
 public:
-  WLAN();
+  WLAN(GUI_GATEWAY& gui_gateway);
 
   struct cNetwork {
     int num;
@@ -49,6 +55,7 @@ public:
   void disconnectFromWifiNetwork();
   int getWifiSignalStrength();
   void processWifiState(lv_timer_t * timer);
+  void checkScanStatus(lv_timer_t* timer);
 
   // timers and other static lvgl object references
   static void check_wifi_status_timer_cb(lv_timer_t * timer);

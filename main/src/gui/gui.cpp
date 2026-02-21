@@ -239,77 +239,76 @@ void GUI::wifi_credentials_handler(lv_event_t * e)
     if(code == LV_EVENT_CLICKED || code == LV_EVENT_FOCUSED) {
         /*Focus on the clicked text area*/
         if(gui.keyboard != NULL) lv_keyboard_set_textarea(gui.keyboard, ta);
+        return;
     }
 
-    else if(code == LV_EVENT_READY) {
-        Serial.write("USER INPUTTED TEXT");
-        
-        LV_LOG_USER("Ready, current text: %s", lv_textarea_get_text(ta));
+    if(code != LV_EVENT_READY) return;
 
-        const char* input_text = lv_textarea_get_text(ta);
-        Serial.println("USER INPUTTED TEXT:");
-        Serial.println(input_text);  // Serial output
+    Serial.write("USER INPUTTED TEXT");
 
-        // Hide the container and show the loading spinner instead
-        if (nInfoEntry->container) {
-            lv_obj_add_flag(nInfoEntry->container, LV_OBJ_FLAG_HIDDEN);
-        }
+    LV_LOG_USER("Ready, current text: %s", lv_textarea_get_text(ta));
 
-        // attempt to connect to network the user clicked the checkbox
-        gui.loading_spinner = lv_spinner_create(nInfoEntry->network_sub_page);
-        lv_obj_set_size(gui.loading_spinner, 100, 100);
-        lv_obj_center(gui.loading_spinner);
-        lv_spinner_set_anim_params(gui.loading_spinner, 10000, 200);
+    const char* input_text = lv_textarea_get_text(ta);
+    Serial.println("USER INPUTTED TEXT:");
+    Serial.println(input_text);  // Serial output
 
-        lv_refr_now(NULL);
-
-        // FOR NOW I WANT THIS TO BE BLOCKING UNTIL I CAN GET TO DISABLING THE BACK BUTTON, ETC, ETC
-        gui.wlan->connectToWifiNetworkBlocking(nInfoEntry->network.ssid, input_text);
-
-        lv_obj_del(gui.loading_spinner);
-        lv_obj_clear_flag(nInfoEntry->container, LV_OBJ_FLAG_HIDDEN);
-
-        wl_status_t wifiStatus = WiFi.status();
-
-        // wifi success UI updates
-        if(wifiStatus == WL_CONNECTED) {
-            
-            // pswd btn label
-            lv_obj_t * child = lv_obj_get_child(nInfoEntry->container, 0);
-            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-
-            // pswd btn 
-            child = lv_obj_get_child(nInfoEntry->container, 1);
-            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-
-            // success btn
-            child = lv_obj_get_child(nInfoEntry->container, 2);
-            lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
-
-            // failure btn
-            child = lv_obj_get_child(nInfoEntry->container, 3);
-            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-
-            // separator
-            child = lv_obj_get_child(nInfoEntry->container, 4);
-            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-            // keyboard
-            child = lv_obj_get_child(nInfoEntry->container, 5);
-            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            // success btn
-            lv_obj_t * child = lv_obj_get_child(nInfoEntry->container, 2);
-            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-
-            // failure btn
-            child = lv_obj_get_child(nInfoEntry->container, 3);
-            lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
-        }
-
-        gui.updateWifiWidget(wifiStatus);
+    // Hide the container and show the loading spinner instead
+    if (nInfoEntry->container) {
+        lv_obj_add_flag(nInfoEntry->container, LV_OBJ_FLAG_HIDDEN);
     }
 
-    free(nInfoEntry);
+    // attempt to connect to network the user clicked the checkbox
+    gui.loading_spinner = lv_spinner_create(nInfoEntry->network_sub_page);
+    lv_obj_set_size(gui.loading_spinner, 100, 100);
+    lv_obj_center(gui.loading_spinner);
+    lv_spinner_set_anim_params(gui.loading_spinner, 10000, 200);
+
+    lv_refr_now(NULL);
+
+    // FOR NOW I WANT THIS TO BE BLOCKING UNTIL I CAN GET TO DISABLING THE BACK BUTTON, ETC, ETC
+    gui.wlan->connectToWifiNetworkBlocking(nInfoEntry->network.ssid, input_text);
+
+    lv_obj_del(gui.loading_spinner);
+    lv_obj_clear_flag(nInfoEntry->container, LV_OBJ_FLAG_HIDDEN);
+
+    wl_status_t wifiStatus = WiFi.status();
+
+    // wifi success UI updates
+    if(wifiStatus == WL_CONNECTED) {
+
+        // pswd btn label
+        lv_obj_t * child = lv_obj_get_child(nInfoEntry->container, 0);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+
+        // pswd btn
+        child = lv_obj_get_child(nInfoEntry->container, 1);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+
+        // success btn
+        child = lv_obj_get_child(nInfoEntry->container, 2);
+        lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
+
+        // failure btn
+        child = lv_obj_get_child(nInfoEntry->container, 3);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+
+        // separator
+        child = lv_obj_get_child(nInfoEntry->container, 4);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+        // keyboard
+        child = lv_obj_get_child(nInfoEntry->container, 5);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        // success btn
+        lv_obj_t * child = lv_obj_get_child(nInfoEntry->container, 2);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+
+        // failure btn
+        child = lv_obj_get_child(nInfoEntry->container, 3);
+        lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    gui.updateWifiWidget(wifiStatus);
 }
 
 void GUI::network_submenu_handler(lv_event_t * e) {
@@ -402,11 +401,14 @@ void GUI::disconnect_network_submenu_handler(lv_event_t * e) {
     gui.wlan->disconnectFromWifiNetwork();
     lv_menu_clear_history(gui.settings_menu);
     lv_menu_set_page(gui.settings_menu,gui.main_page);
-    
+
     gui.updateWifiWidget(WiFi.status());
-    free(nInfoEntry);
 }
 
+
+static void delete_network_info_cb(lv_event_t* e) {
+    delete static_cast<GUI::NetworkInfo*>(lv_event_get_user_data(e));
+}
 
 // scan end callback, updates the wifi network list within settings
 void GUI::updateWifiNetworkList(int networkCount, struct WLAN::cNetwork* networks) {
@@ -423,11 +425,11 @@ void GUI::updateWifiNetworkList(int networkCount, struct WLAN::cNetwork* network
   
     for(int i = 0; i < networkCount; ++i) {
         // DEBUG INFORMATION
-        Serial.println("First network details:");
+        Serial.printf("Network %d details:\n", i+1);
         Serial.printf("  SSID: %s\n", networks[i].ssid.c_str());
         Serial.printf("  Signal Strength: %d dBm\n", networks[i].rssi);
         Serial.printf("  Channel: %d\n", networks[i].channel);
-        Serial.printf("  Encryption: %d\n", networks[i].encryptionType);
+        Serial.printf("  Encryption: %s\n", networks[i].encryptionType);
 
         // in case modification of network labels is needed
         String networkLabel = networks[i].ssid;
@@ -466,12 +468,12 @@ void GUI::updateWifiNetworkList(int networkCount, struct WLAN::cNetwork* network
         lv_menu_set_load_page_event(settings_menu, cont, network_sub_page);
 
         // create ui elements for new network
-        NetworkInfo* netData = (NetworkInfo*) malloc(sizeof(NetworkInfo));
-        if (netData) {
-            *netData = networkInfo.back();
-        }
+        NetworkInfo* netData = new NetworkInfo(networkInfo.back());
 
-        // place disconnect button instead of passwords prompt screen 
+        // tie netData lifetime to this cont: freed when cont is deleted
+        lv_obj_add_event_cb(cont, delete_network_info_cb, LV_EVENT_DELETE, netData);
+
+        // place disconnect button instead of passwords prompt screen
         if(WiFi.status() == WL_CONNECTED && networkCount == 1) {
             // disconnect from network button
             lv_obj_t *disconnect_btn = lv_button_create(network_sub_page);
