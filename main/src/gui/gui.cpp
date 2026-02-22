@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "gui_theme.h"
 
 GUI::GUI(){} 
 
@@ -42,7 +43,7 @@ lv_style_t GUI::temp_slider;
 void GUI::style_init() {
     lv_style_init(&generic_btn_style);
     lv_style_set_radius(&generic_btn_style, 20);
-    lv_style_set_bg_color(&generic_btn_style, lv_color_hex(0x041941));
+    lv_style_set_bg_color(&generic_btn_style, COLOR_BTN_PRIMARY);
 
     lv_style_init(&nobg_btn_style);
     lv_style_set_bg_opa(&nobg_btn_style, LV_OPA_TRANSP);
@@ -51,7 +52,7 @@ void GUI::style_init() {
 
     lv_style_init(&alert_btn_style);
     lv_style_set_radius(&alert_btn_style, 20);
-    lv_style_set_bg_color(&alert_btn_style, lv_color_hex(0xFF3131));
+    lv_style_set_bg_color(&alert_btn_style, COLOR_BTN_DANGER);
     lv_style_set_border_opa(&alert_btn_style, LV_OPA_TRANSP);
 
     lv_style_init(&active_timer);
@@ -68,7 +69,7 @@ void GUI::style_init() {
     lv_style_set_border_width(&calibration_container, 2);
     lv_style_set_border_opa(&calibration_container, LV_OPA_20);
     lv_style_set_pad_top(&calibration_container, 10);
-    lv_style_set_bg_color(&calibration_container, lv_color_hex(0xffffff));
+    lv_style_set_bg_color(&calibration_container, COLOR_SURFACE);
     lv_style_set_bg_opa(&calibration_container, LV_OPA_COVER);
 
     lv_style_init(&temp_slider);
@@ -357,7 +358,7 @@ void GUI::network_submenu_handler(lv_event_t * e) {
     lv_obj_align(success_status_label, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(success_status_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_font(success_status_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(success_status_label, lv_color_hex(0x80EF80), LV_PART_MAIN);
+    lv_obj_set_style_text_color(success_status_label, COLOR_SUCCESS_TEXT, LV_PART_MAIN);
     lv_label_set_long_mode(success_status_label, LV_LABEL_LONG_WRAP);
 
     lv_obj_t * failure_status_label = lv_label_create(cont);
@@ -366,7 +367,7 @@ void GUI::network_submenu_handler(lv_event_t * e) {
     lv_obj_align(failure_status_label, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(failure_status_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_font(failure_status_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(failure_status_label, lv_color_hex(0xff474c), LV_PART_MAIN);
+    lv_obj_set_style_text_color(failure_status_label, COLOR_ERROR, LV_PART_MAIN);
     lv_label_set_long_mode(failure_status_label, LV_LABEL_LONG_WRAP);
     
 
@@ -437,7 +438,7 @@ void GUI::updateWifiNetworkList(int networkCount, struct WLAN::cNetwork* network
         lv_obj_t* network_sub_page = lv_menu_page_create(settings_menu, networkLabel.c_str());
 
         lv_obj_t *cont = lv_menu_cont_create(wifi_sub_page);
-        lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(cont, COLOR_SURFACE, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
         NetworkInfo nInfoEntry;
@@ -551,14 +552,14 @@ void GUI::setup_start_screen() {
     start_screen = lv_obj_create(NULL);
 
     // background styling 
-    lv_obj_set_style_bg_color(start_screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(start_screen, lv_color_hex(0x0D57A2), 0);
+    lv_obj_set_style_bg_color(start_screen, COLOR_BG_START, LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(start_screen, COLOR_BG_END, 0);
     lv_obj_set_style_bg_grad_dir(start_screen, LV_GRAD_DIR_HOR, 0);
 
     // title button
     lv_obj_t *title_label = lv_label_create(start_screen);
     lv_label_set_text( title_label, "ChessBuddy" );
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_text_color(title_label, COLOR_TEXT_ON_DARK, LV_PART_MAIN);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 50);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_42, 0);
 
@@ -598,13 +599,13 @@ void GUI::setup_start_screen() {
 void GUI::setup_wifi_prompt_screen() {
     wifi_prompt_screen = lv_obj_create(NULL);
 
-    lv_obj_set_style_bg_color(wifi_prompt_screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(wifi_prompt_screen, lv_color_hex(0x0D57A2), 0);
+    lv_obj_set_style_bg_color(wifi_prompt_screen, COLOR_BG_START, LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(wifi_prompt_screen, COLOR_BG_END, 0);
     lv_obj_set_style_bg_grad_dir(wifi_prompt_screen, LV_GRAD_DIR_HOR, 0);
 
     lv_obj_t *title_label = lv_label_create(wifi_prompt_screen);
     lv_label_set_text( title_label, "You must first connect your ChessBuddy to a wireless network in order to play!");
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xA3BECC), LV_PART_MAIN);
+    lv_obj_set_style_text_color(title_label, COLOR_TEXT_MUTED, LV_PART_MAIN);
     lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0); 
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 50);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_36, 0);
@@ -636,7 +637,7 @@ void GUI::execute_calibration_routine_handler_settings(lv_event_t * e)
 
     lv_obj_del(lv_obj_get_parent(calibrationData->message_box));
     lv_label_set_text(calibrationData->status_icon, LV_SYMBOL_OK);
-    lv_obj_set_style_text_color(calibrationData->status_icon, lv_color_hex(0x00C853), LV_PART_MAIN);
+    lv_obj_set_style_text_color(calibrationData->status_icon, COLOR_SUCCESS, LV_PART_MAIN);
     free(calibrationData);
 }
 
@@ -783,10 +784,10 @@ void GUI::setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
     
     if(main_controller->calibrationStatus) {
         lv_label_set_text(status_icon, LV_SYMBOL_OK);
-         lv_obj_set_style_text_color(status_icon, lv_color_hex(0x00C853), LV_PART_MAIN);
+         lv_obj_set_style_text_color(status_icon, COLOR_SUCCESS, LV_PART_MAIN);
     } else {
         lv_label_set_text(status_icon, LV_SYMBOL_CLOSE);
-        lv_obj_set_style_text_color(status_icon, lv_color_hex(0xFF474C), LV_PART_MAIN);
+        lv_obj_set_style_text_color(status_icon, COLOR_ERROR, LV_PART_MAIN);
     }
 
     lv_obj_set_style_text_font(status_icon, &lv_font_montserrat_20, 0);
@@ -823,8 +824,8 @@ void GUI::setup_settings_screen() {
 
     settings_menu = lv_menu_create(settings_screen);
     lv_menu_set_mode_root_back_button(settings_menu, LV_MENU_ROOT_BACK_BUTTON_ENABLED);
-    lv_obj_set_style_bg_color(settings_menu, lv_color_hex(0x7295CA), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(settings_menu, lv_color_hex(0x0D57A2), 0);
+    lv_obj_set_style_bg_color(settings_menu, COLOR_BG_START, LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(settings_menu, COLOR_BG_END, 0);
     lv_obj_set_style_bg_grad_dir(settings_menu, LV_GRAD_DIR_VER, 0);
 
     lv_obj_add_event_cb(settings_menu, back_event_handler, LV_EVENT_CLICKED, nullptr);
@@ -870,7 +871,7 @@ void GUI::setup_settings_screen() {
 
     // wifi settings settings_menu item
     cont = lv_menu_cont_create(main_page);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(cont, COLOR_SURFACE, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
     
     lv_menu_set_load_page_event(settings_menu, cont, wifi_sub_page);
@@ -887,7 +888,7 @@ void GUI::setup_settings_screen() {
 
     // display settings settings_menu item
     cont = lv_menu_cont_create(main_page);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(cont, COLOR_SURFACE, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
     
     lv_obj_t *monitor_image = lv_image_create(cont);
@@ -901,7 +902,7 @@ void GUI::setup_settings_screen() {
     // ROBOTIC ARM MECHANICS SETTINGS PAGE (IMPORTANT)
     // for settings related to the chess buddy arm
     cont = lv_menu_cont_create(main_page);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(cont, COLOR_SURFACE, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
     lv_menu_set_load_page_event(settings_menu, cont, arm_mechanics_sub_page);
@@ -917,7 +918,7 @@ void GUI::setup_settings_screen() {
     // ELECTRONIC CHESS BOARD SETTINGS PAGE
     // settings related to the configuration/behavior of the chessboard
     cont = lv_menu_cont_create(main_page);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(cont, COLOR_SURFACE, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
     lv_menu_set_load_page_event(settings_menu, cont, chessboard_sub_page);
@@ -934,8 +935,8 @@ void GUI::setup_settings_screen() {
 }
 
 void GUI::setup_screen_template(lv_obj_t * screen, char* title) {
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(screen, lv_color_hex(0x0D57A2), 0);
+    lv_obj_set_style_bg_color(screen, COLOR_BG_START, LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(screen, COLOR_BG_END, 0);
     lv_obj_set_style_bg_grad_dir(screen, LV_GRAD_DIR_VER, 0);
 
      // Create back button
@@ -951,14 +952,14 @@ void GUI::setup_screen_template(lv_obj_t * screen, char* title) {
     lv_label_set_text(back_icon, LV_SYMBOL_LEFT);  // Arrow icon
     lv_obj_center(back_icon);
     lv_obj_set_style_text_font(back_icon, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(back_icon, lv_color_hex(0x00000), 0);
+    lv_obj_set_style_text_color(back_icon, COLOR_TEXT_DARK, 0);
 
 
     lv_obj_t *title_label = lv_label_create(screen);
     lv_label_set_text(title_label, title);
     lv_obj_align(title_label, LV_ALIGN_TOP_LEFT, 50, 14);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_color(title_label, COLOR_TEXT_ON_DARK, 0);
 }
 
 void GUI::side_select_btn_handler(lv_event_t * e)
@@ -1006,7 +1007,7 @@ void GUI::setup_side_select_screen() {
 
         lv_obj_add_event_cb(cont, side_select_btn_handler, LV_EVENT_CLICKED, (void*) &sideTable[i]);
         lv_obj_set_style_radius(cont, 8, 0);
-        lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
+        lv_obj_set_style_bg_color(cont, COLOR_BTN_ACCENT, 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
 
         lv_obj_t * icon = lv_image_create(cont);
@@ -1018,7 +1019,7 @@ void GUI::setup_side_select_screen() {
 
         lv_label_set_text(label, sideTable[i].label);
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
-        lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
+        lv_obj_set_style_text_color(label, COLOR_TEXT_MUTED, 0);
         lv_obj_set_width(label, 180);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     }
@@ -1073,7 +1074,7 @@ void GUI::setup_difficulty_screen() {
 
         lv_obj_add_event_cb(cont, difficulty_btn_handler, LV_EVENT_CLICKED, (void *) &difficultyTable[i]);
         lv_obj_set_style_radius(cont, 8, 0);
-        lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
+        lv_obj_set_style_bg_color(cont, COLOR_BTN_ACCENT, 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
 
         // Icon (left)
@@ -1092,7 +1093,7 @@ void GUI::setup_difficulty_screen() {
 
         lv_label_set_text(label, difficultyTable[i].label);
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
-        lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
+        lv_obj_set_style_text_color(label, COLOR_TEXT_MUTED, 0);
         lv_obj_set_width(label, 220);  // Optional width to control wrapping if needed
         //lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);    
     }
@@ -1179,7 +1180,7 @@ void GUI::setup_time_control_screen() {
 
         lv_obj_add_event_cb(cont, time_control_btn_handler, LV_EVENT_CLICKED, (void*) &timeControlTable[i]);
         lv_obj_set_style_radius(cont, 40, 0);
-        lv_obj_set_style_bg_color(cont, lv_color_hex(0x00547B), 0);
+        lv_obj_set_style_bg_color(cont, COLOR_BTN_ACCENT, 0);
         lv_obj_set_style_pad_all(cont, 10, 0);
 
         // Icon (left)
@@ -1198,7 +1199,7 @@ void GUI::setup_time_control_screen() {
 
         lv_label_set_text(label, timeControlTable[i].label);
         lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
-        lv_obj_set_style_text_color(label, lv_color_hex(0xA3BECC), 0);
+        lv_obj_set_style_text_color(label, COLOR_TEXT_MUTED, 0);
         lv_obj_set_width(label, 200);  // Optional width to control wrapping if needed
         //lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);    
     }
@@ -1268,7 +1269,7 @@ void GUI::setup_start_game_screen() {
     lv_obj_set_size(start_game_btn, 250, 80);
 
     lv_obj_set_style_radius(start_game_btn, 40, 0);
-    lv_obj_set_style_bg_color(start_game_btn, lv_color_hex(0x008000), 0);
+    lv_obj_set_style_bg_color(start_game_btn, COLOR_BTN_START, 0);
     lv_obj_set_style_pad_all(start_game_btn, 10, 0);
     lv_obj_set_style_border_opa(start_game_btn, LV_OPA_TRANSP, 0);
     lv_obj_align(start_game_btn, LV_ALIGN_CENTER, 0, 0);
@@ -1277,13 +1278,13 @@ void GUI::setup_start_game_screen() {
     lv_obj_t * start_game_btn_label = lv_label_create(start_game_btn);
     lv_label_set_text(start_game_btn_label, "Start Game");
     lv_obj_set_style_text_font(start_game_btn_label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_color(start_game_btn_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_color(start_game_btn_label, COLOR_TEXT_ON_DARK, 0);
     lv_obj_center(start_game_btn_label);
 
     lv_obj_t * spacer = lv_obj_create(start_game_screen);
     lv_obj_align(spacer, LV_ALIGN_CENTER, 0, 70);
     lv_obj_set_size(spacer, 300, 2);
-    lv_obj_set_style_bg_color(spacer, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_bg_color(spacer, COLOR_SURFACE, 0);
     lv_obj_set_style_border_opa(spacer, LV_OPA_TRANSP, 0);
     lv_obj_set_style_radius(spacer, 50, 0);
 
@@ -1295,7 +1296,7 @@ void GUI::setup_start_game_screen() {
     lv_obj_t * game_options_label = lv_label_create(start_game_screen);
     lv_label_set_text(game_options_label, buffer);
     lv_obj_set_style_text_font(game_options_label, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(game_options_label, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_color(game_options_label, COLOR_TEXT_ON_DARK, 0);
     lv_obj_align(game_options_label, LV_ALIGN_CENTER, 0, 120);
 
 }
@@ -1431,8 +1432,8 @@ void GUI::setup_active_game_screen() {
 
     active_game_screen = lv_obj_create(NULL);
 
-    lv_obj_set_style_bg_color(active_game_screen, lv_color_hex(0x7295CA), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(active_game_screen, lv_color_hex(0x0D57A2), 0);
+    lv_obj_set_style_bg_color(active_game_screen, COLOR_BG_START, LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(active_game_screen, COLOR_BG_END, 0);
     lv_obj_set_style_bg_grad_dir(active_game_screen, LV_GRAD_DIR_HOR, 0);
 
     lv_obj_t * top_cont = lv_obj_create(active_game_screen);
@@ -1469,11 +1470,11 @@ void GUI::setup_active_game_screen() {
     lv_obj_t * spacer = lv_obj_create(active_game_screen);
     lv_obj_align(spacer, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_size(spacer, 315, 2);
-    lv_obj_set_style_bg_color(spacer, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_bg_color(spacer, COLOR_SURFACE, 0);
     lv_obj_set_style_border_opa(spacer, LV_OPA_TRANSP, 0);
     lv_obj_set_style_radius(spacer, 50, 0);
 
-    
+
     user_total_seconds = gameInfo.time_control;
     user_minutes = user_total_seconds / 60;
     user_seconds = user_total_seconds % 60;
@@ -1486,7 +1487,7 @@ void GUI::setup_active_game_screen() {
     lv_obj_center(user_clock);
     lv_label_set_text(user_clock, user_clk_buffer);
     lv_obj_set_style_text_font(user_clock, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(user_clock, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_color(user_clock, COLOR_TEXT_ON_DARK, 0);
 
     computer_total_seconds = gameInfo.time_control;
     computer_minutes = computer_total_seconds / 60;
@@ -1499,7 +1500,7 @@ void GUI::setup_active_game_screen() {
     lv_obj_center(computer_clock);
     lv_label_set_text(computer_clock, computer_clk_buffer);
     lv_obj_set_style_text_font(computer_clock, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(computer_clock, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_color(computer_clock, COLOR_TEXT_ON_DARK, 0);
 
     // every 1 second, the clock timer decrements for whoever's side it is
     user_timer = lv_timer_create(clock_timer, 1000, (void *)user_clock);
