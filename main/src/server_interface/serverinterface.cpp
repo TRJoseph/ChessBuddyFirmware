@@ -21,12 +21,12 @@ void ServerInterface::getBestMoveFromServer() {
         WiFiClientSecure client;
         client.setInsecure();  // cert verification disabled for development
 
-        String fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        
         String moves = buildMovesString();
 
         // builds JSON payload
         DynamicJsonDocument doc(512);
-        doc["fen"] = fen;
+        doc["fen"] = startPosFEN;
         if (moves.length() > 0) {
             doc["moves"] = moves;
         }

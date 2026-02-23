@@ -14,6 +14,8 @@ private:
     // Render endpoint
     const char* serverURL = "https://chess-engine-service.onrender.com/get_move";
 
+    String startPosFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
     // reference to the main controller object
     Main_Controller& main_controller;
 

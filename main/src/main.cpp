@@ -7,6 +7,7 @@
 #include "gui/gui_gateway.h"
 #include "server_interface/serverInterface.h"
 #include "led_control/ledcontroller.h"
+#include "preferencesManager/preferences_manager.h"
 
 
 /* THE FT6336U SCREEN RES AND ROTATION */
@@ -18,10 +19,11 @@
 #define DRAW_BUF_SIZE (TFT_HOR_RES * TFT_VER_RES / 10 * (LV_COLOR_DEPTH / 8))
 uint32_t draw_buf[DRAW_BUF_SIZE / 4];
 
+PreferencesManager prefsManager;
 GUI& gui = GUI::instance();
 GUI_GATEWAY gui_gateway;
 Main_Controller main_controller(gui_gateway);
-WLAN wlan(gui_gateway);
+WLAN wlan(gui_gateway, prefsManager);
 ServerInterface server_interface(main_controller);
 
 

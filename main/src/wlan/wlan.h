@@ -4,18 +4,17 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <lvgl.h>
-#include <Preferences.h>
 #include "FT6336U.h"
 #include "Main_Definitions.h"
 #include "User_Setup.h"
 #include <WiFi.h>
+#include <utility>
+#include "preferencesManager/preferences_manager.h"
 
 class GUI_GATEWAY;
 
 class WLAN {
 private:
-  Preferences prefs;
-
   int networkCount = 0;
 
   unsigned long scanStartTime = 0;
@@ -30,12 +29,13 @@ private:
   lv_timer_t* wifi_scan_timer;
   
   GUI_GATEWAY& gui_gateway;
+  PreferencesManager& preferencesManager;
 
   void debugCurrentWifiStatus();
   const char* getNetworkEncryptionType(wifi_auth_mode_t type);
 
 public:
-  WLAN(GUI_GATEWAY& gui_gateway);
+  WLAN(GUI_GATEWAY& gui_gateway, PreferencesManager& prefsManager);
 
   struct cNetwork {
     int num;

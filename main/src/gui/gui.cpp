@@ -819,6 +819,17 @@ void GUI::setup_arm_mechanics_subpage(lv_obj_t * arm_mechanics_page) {
     lv_obj_set_style_bg_color(accel_slider, lv_color_black(), LV_PART_KNOB);
 }
 
+static void add_menu_separator(lv_obj_t* parent) {
+    lv_obj_t* sep = lv_obj_create(parent);
+    lv_obj_set_size(sep, lv_pct(88), 1);
+    lv_obj_set_style_bg_color(sep, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(sep, LV_OPA_20, 0);
+    lv_obj_set_style_border_width(sep, 0, 0);
+    lv_obj_set_style_pad_all(sep, 0, 0);
+    lv_obj_set_style_radius(sep, 1, 0);
+    lv_obj_set_style_shadow_opa(sep, LV_OPA_TRANSP, 0);
+}
+
 void GUI::setup_settings_screen() {
     settings_screen = lv_obj_create(NULL);
 
@@ -885,6 +896,7 @@ void GUI::setup_settings_screen() {
     lv_label_set_text(wifi_cont_label, "Wi-Fi");
     lv_label_set_long_mode(wifi_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(wifi_cont_label, 1);
+    add_menu_separator(main_page);
 
     // display settings settings_menu item
     cont = lv_menu_cont_create(main_page);
@@ -898,6 +910,7 @@ void GUI::setup_settings_screen() {
     lv_label_set_text(display_cont_label, "Display Configuration");
     lv_label_set_long_mode(display_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(display_cont_label, 1);
+    add_menu_separator(main_page);
 
     // ROBOTIC ARM MECHANICS SETTINGS PAGE (IMPORTANT)
     // for settings related to the chess buddy arm
@@ -914,6 +927,7 @@ void GUI::setup_settings_screen() {
     lv_label_set_text(robotic_arm_cont_label, "Arm Mechanics");
     lv_label_set_long_mode(robotic_arm_cont_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(robotic_arm_cont_label, 1);
+    add_menu_separator(main_page);
 
     // ELECTRONIC CHESS BOARD SETTINGS PAGE
     // settings related to the configuration/behavior of the chessboard

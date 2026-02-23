@@ -1,11 +1,18 @@
 #include "wlan.h"
 #include "gui/gui_gateway.h"
 
-WLAN::WLAN(GUI_GATEWAY& gui_gateway) : gui_gateway(gui_gateway) {}
+WLAN::WLAN(GUI_GATEWAY& gui_gateway, PreferencesManager& prefsManager) : gui_gateway(gui_gateway), preferencesManager(prefsManager) {}
 
 void WLAN::setup_wlan() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
+
+  auto [ssid, password] = preferencesManager.get_wifi_credentials();
+
+  // attempt to connect to network
+  if(ssid.length() != 0 && password.length() !=0) {
+    connectToWifiNetwork(ssid, password);
+  }
 }
 
 // TODO: have preferences object reference instead of doing preference stuff inside of wlan class
@@ -340,122 +347,6 @@ void WLAN::checkScanStatus(lv_timer_t* timer) {
   }
 }
 
-
-// void WLAN::processWifiState(lv_timer_t * timer) {
-//   wl_status_t wifiStatus = WiFi.status();
-
-//   debugCurrentWifiStatus();
-
-//   switch (wifiStatus) {
-//     case WL_DISCONNECTED: {
-
-//       int scanResult = WiFi.scanComplete();
-
-//       Serial.print("Scan Status (int): ");
-//       Serial.println(scanResult);  // Print numeric value
-      
-
-//       if(scanResult >= 0) {
-//         networkCount = scanResult;
-
-//         if (networkCount == 0) {
-//           // count should be 0
-//           gui_gateway.request_wifi_list_update(networkCount, networksList);
-//         } else {
-//           //Free previous results if they exist
-//           if (networksList != NULL) {
-//             freeNetworks(networksList);
-//             networksList = NULL;
-//           }
-          
-//           networksList = new struct cNetwork[networkCount];
-//           for (int i = 0; i < networkCount; ++i) {
-//             networksList[i].num = i + 1;
-//             networksList[i].ssid = WiFi.SSID(i).c_str();
-//             networksList[i].rssi = WiFi.RSSI(i);
-//             networksList[i].channel = WiFi.channel(i);
-//             switch (WiFi.encryptionType(i)) {
-//               case WIFI_AUTH_OPEN:
-//                 networksList[i].encryptionType = "open";
-//                 break;
-//               case WIFI_AUTH_WEP:
-//                 networksList[i].encryptionType = "WEP";
-//                 break;
-//               case WIFI_AUTH_WPA_PSK:
-//                 networksList[i].encryptionType = "WPA";
-//                 break;
-//               case WIFI_AUTH_WPA2_PSK:
-//                 networksList[i].encryptionType = "WPA2";
-//                 break;
-//               case WIFI_AUTH_WPA_WPA2_PSK:
-//                 networksList[i].encryptionType = "WPA+WPA2";
-//                 break;
-//               case WIFI_AUTH_WPA2_ENTERPRISE:
-//                 networksList[i].encryptionType = "WPA2-EAP";
-//                 break;
-//               case WIFI_AUTH_WPA3_PSK:
-//                 networksList[i].encryptionType = "WPA3";
-//                 break;
-//               case WIFI_AUTH_WPA2_WPA3_PSK:
-//                 networksList[i].encryptionType = "WPA2+WPA3";
-//                 break;
-//               case WIFI_AUTH_WAPI_PSK:
-//                 networksList[i].encryptionType = "WAPI";
-//                 break;
-//               default:
-//                 networksList[i].encryptionType = "unknown";
-//             }
-//             delay(10);
-//           }
-//         }
-
-//         // TODO: update UI for menu
-//         gui_gateway.request_wifi_list_update(networkCount, networksList);
-//         WiFi.scanDelete();
-
-//         // stop the timer
-//         lv_timer_del(timer);
-        
-//       } else if (scanResult == WIFI_SCAN_FAILED) {
-//         // Scan failed
-//         Serial.println("WiFi scan failed");
-//         if(failedScans >=5) {
-//           // Update UI to show failed connection
-//           gui_gateway.request_wifi_icon_update(WL_CONNECT_FAILED);
-
-//           lv_timer_del(timer);
-//         }
-//         failedScans++;
-//       }
-//       else if (millis() - scanStartTime > 15000) {
-//         // Timeout after 15 seconds
-//         WiFi.scanDelete();
-//         Serial.println("WiFi scan timeout");
-        
-//         // Update UI to show timeout
-//         gui_gateway.request_wifi_icon_update(WL_CONNECT_FAILED);
-
-//         lv_timer_del(timer);
-//       }
-//       break;
-//     }
-//     case WL_CONNECTED: {
-//           Serial.println("WiFi connected");
-//           Serial.print("IP address: ");
-//           Serial.println(WiFi.localIP());
-          
-//           // Update UI to show connected state
-//           gui_gateway.request_wifi_icon_update(WL_CONNECTED);
-          
-//           // if wifi is connected stop the timer
-//           lv_timer_del(timer);
-//       break;
-//     }
-//     default:
-//     debugCurrentWifiStatus();
-//   }
-// }
-
 void WLAN::check_scan_status_timer_cb(lv_timer_t * timer) {
     WLAN* wlan = static_cast<WLAN*>(lv_timer_get_user_data(timer));
     if (!wlan) return;
@@ -464,19 +355,6 @@ void WLAN::check_scan_status_timer_cb(lv_timer_t * timer) {
 
     //updateWifiWidget(currentWifiState);
 }
-
-// const char* wifiScanStateToString(WifiScanState state) {
-//   switch (state) {
-//     case WIFI_IDLE: return "IDLE";
-//     case WIFI_SCANNING: return "SCANNING";
-//     case WIFI_CONNECTING: return "CONNECTING";
-//     case WIFI_CONNECTED: return "CONNECTED";
-//     case WIFI_CONNECTION_FAILED: return "CONNECTION FAILED";
-//     default: return "UNKNOWN";
-//   }
-// }
-
-
 
 void WLAN::startWifiScan() {
   wl_status_t wifiStatus = WiFi.status();

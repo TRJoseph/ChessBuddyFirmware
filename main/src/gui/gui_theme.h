@@ -10,8 +10,8 @@
 
 /* --- Background Gradient --- */
 /* Screen background: horizontal/vertical blue gradient */
-#define COLOR_BG_START      lv_color_hex(0x7295CA)  /* light blue */
-#define COLOR_BG_END        lv_color_hex(0x0D57A2)  /* deep blue  */
+#define COLOR_BG_START      lv_color_hex(0x5BA8D6)  /* vibrant sky blue */
+#define COLOR_BG_END        lv_color_hex(0x0A2E6A)  /* deep navy       */
 
 /* --- Buttons --- */
 /* Dark navy — primary action buttons (Start, etc.) */
