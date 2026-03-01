@@ -65,6 +65,8 @@ void setup()
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER); /*Touchpad should have POINTER type*/
     lv_indev_set_read_cb(indev, gui.my_touch_read);
 
+    // start the preferences manager
+    prefsManager.setup_preferences();
 
     /* Starts the ChessBuddy GUI */
     gui.initializeGUI(&wlan, &main_controller, &server_interface);
@@ -81,7 +83,6 @@ void setup()
     // setup wifi preferences and credentials
     // attempts to connect if saved network is found
     wlan.setup_wlan();
-    wlan.setup_preferences();
 
 
     /* */

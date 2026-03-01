@@ -62,7 +62,6 @@ public:
   static void check_scan_status_timer_cb(lv_timer_t * timer);
 
   void setup_wlan();
-  void setup_preferences();
 };
 
 #endif

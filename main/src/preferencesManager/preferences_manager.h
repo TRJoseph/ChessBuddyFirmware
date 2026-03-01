@@ -28,6 +28,8 @@ private:
 public:
     void setup_preferences();
 
+    void store_wifi_credentials(const char* ssid, const char* password);
+
     std::pair<String, String> get_wifi_credentials() { return {ssid, pswrd}; }
 };
 
