@@ -1,7 +1,7 @@
 #include "preferences_manager.h"
 
 void PreferencesManager::setup_preferences() {
-    ScopedPrefs _(prefs, prefsName, true);  // read-only — just loading saved values
+    ScopedPrefs _(prefs, prefsName, false);  // read-write so NVS creates namespace on first boot
     ssid  = prefs.getString("ssid", "");
     pswrd = prefs.getString("networkPass", "");
 }

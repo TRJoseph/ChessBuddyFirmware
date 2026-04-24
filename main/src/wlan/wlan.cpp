@@ -9,9 +9,15 @@ void WLAN::setup_wlan() {
 
   auto [ssid, password] = preferencesManager.get_wifi_credentials();
 
+  Serial.printf("[WLAN] setup_wlan: ssid='%s' password=%s\n",
+                ssid.c_str(), password.isEmpty() ? "(empty)" : "(set)");
+
   // attempt to connect to network
-  if(ssid.length() != 0 && password.length() !=0) {
+  if(ssid.length() != 0 && password.length() != 0) {
+    Serial.println("[WLAN] Stored credentials found, attempting auto-connect...");
     connectToWifiNetwork(ssid, password);
+  } else {
+    Serial.println("[WLAN] No stored credentials, skipping auto-connect.");
   }
 }
 
@@ -112,7 +118,7 @@ void WLAN::check_wifi_status_timer_cb(lv_timer_t * timer) {
 void WLAN::connectToWifiNetwork(const String& ssid, const String& password) {
   wl_status_t wifiStatus = WiFi.status();
   debugCurrentWifiStatus();
-  if (wifiStatus == WL_IDLE_STATUS || 
+  if (wifiStatus == WL_IDLE_STATUS || wifiStatus == WL_STOPPED ||
       wifiStatus == WL_CONNECT_FAILED || wifiStatus == WL_DISCONNECTED) {
 
     scanStartTime = millis(); // Reuse for connection timeout
